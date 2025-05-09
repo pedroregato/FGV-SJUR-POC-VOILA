@@ -1,0 +1,8 @@
+version: '3'
+services:
+  sjur-poc:
+    build: .
+    ports:
+      - "8866:8866"
+    volumes:
+      - ./avaliacoes:/app/avaliacoes
