@@ -111,3 +111,42 @@ def registrar_metadados(id_recorte: int, texto_publicacao: str):
 
     conn.commit()
     conn.close()
+
+
+def registrar_metadados_dict(id_recorte: int, dados: dict):
+    from app.database.db_connection import get_connection
+    import json
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO metadados (
+                id_recorte, numero_processo, tribunal, uf, orgao, comarca, classe,
+                unidade_fgv, obrigacoes, conteudo_publicado, igpm_count, classificacao,
+                url_email, data_publicacao
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, (
+            id_recorte,
+            dados.get("numero_processo"),
+            dados.get("tribunal"),
+            dados.get("uf"),
+            dados.get("orgao"),
+            dados.get("comarca"),
+            dados.get("classe"),
+            dados.get("unidade_fgv"),
+            json.dumps(dados.get("obrigacoes", [])),
+            dados.get("conteudo_publicado"),
+            dados.get("igpm_count"),
+            dados.get("classificacao"),
+            dados.get("url_email"),
+            dados.get("data_publicacao")
+        ))
+        conn.commit()
+        print(f"✅ Metadados registrados para recorte {id_recorte}")
+    except Exception as e:
+        print(f"❌ Falha ao registrar metadados: {e}")
+    finally:
+        conn.close()
+

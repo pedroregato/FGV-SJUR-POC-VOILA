@@ -83,7 +83,9 @@ def rodar_pipeline_sjur(pasta_html: Path, pasta_json: Path, limite: int = None, 
                 partes = extrair_partes_processo(texto)
                 registrar_partes(id_recorte, partes)
 
-                # Diagnóstico do uso de mock
+                from app.database.db_operations import registrar_metadados_dict  # Certifique-se de ter importado
+
+                # Diagnóstico do uso de mock ou LLM
                 if usar_mock_llm:
                     print("🧪 Usando metadados mock para este recorte.")
                     metadados = gerar_mock_metadados(texto)
@@ -94,6 +96,10 @@ def rodar_pipeline_sjur(pasta_html: Path, pasta_json: Path, limite: int = None, 
                         continue
                     print("🔍 Extraindo metadados reais via LLM para este recorte.")
                     metadados = extrair_metadados_publicacao(texto)
+
+                # Registro se os metadados forem válidos
+                if metadados:
+                    registrar_metadados_dict(id_recorte, metadados)
 
             print("✅ Registro concluído.\n")
 
