@@ -1,11 +1,16 @@
+from pathlib import Path
+
 import win32com.client
 from datetime import datetime
 from typing import List, Optional
 
 
 class OutlookIngestor:
-    def __init__(self, conta: str = "SJUR Coleta Serdon"):
-        self.conta = conta
+    def __init__(self, pasta_html: Path, pasta_json: Path):
+        self.pasta_html = pasta_html
+        self.pasta_json = pasta_json
+        self.conta = "SJUR Coleta Serdon"  # ← Adicione esta linha
+        self.emails_extraidos = self.obter_emails()
 
     def obter_emails(
         self,
