@@ -1,11 +1,9 @@
 import sqlite3
 from pathlib import Path
-
-# Caminho para o banco de dados
-db_path = Path.cwd().parents[1] / "data" / "sjur_recortes.db"
+from app.database.db_connection import get_connection
 
 # Conecta ao banco
-conn = sqlite3.connect(db_path)
+conn = get_connection()
 cursor = conn.cursor()
 
 # Lista todas as tabelas (exceto internas do SQLite)
