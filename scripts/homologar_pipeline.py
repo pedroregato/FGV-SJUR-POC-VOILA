@@ -51,8 +51,8 @@ def main():
 
     print(f"📬 Iniciando processamento de até {args.limit or 'todos'} e-mails. Modo mock: {args.mock}")
 
-    verificar_estrutura_basica()
-    verificar_tabelas_banco()
+    # verificar_estrutura_basica()
+    # verificar_tabelas_banco()
 
     print("🚀 Iniciando homologação do pipeline...")
     rodar_pipeline_sjur(

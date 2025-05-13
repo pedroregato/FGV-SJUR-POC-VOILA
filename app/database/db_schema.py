@@ -7,6 +7,7 @@ def criar_tabelas(conn):
         CREATE TABLE IF NOT EXISTS emails (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             message_id TEXT UNIQUE,
+            url_email TEXT, 
             data_recebimento TEXT,
             assunto TEXT,
             remetente TEXT,
@@ -29,6 +30,7 @@ def criar_tabelas(conn):
             data_publicacao TEXT,
             publicacao TEXT,
             tipo TEXT,
+            justificativa_ia TEXT,  -- ✅ nova coluna
             FOREIGN KEY (message_id) REFERENCES emails(message_id)
         );
     """)
