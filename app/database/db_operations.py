@@ -5,31 +5,38 @@ from app.modules.extractors.partes_extractor import PartesProcesso
 from app.modules.extractors.metadados_extractor import extrair_metadados_publicacao
 
 
+from app.database.db_connection import get_connection
+
 def registrar_email(
-    message_id: str,
-    data_recebimento: str,
-    assunto: str,
-    remetente: str,
-    escritorio: str,
-    codigo: str,
-    area: str,
-    jornal: str,
-    data_disponibilizacao: str,
-    data_processamento: str
+    message_id,
+    data_recebimento,
+    assunto,
+    remetente,
+    escritorio,
+    codigo,
+    area,
+    jornal,
+    data_disponibilizacao,
+    data_processamento,
+    url_email
 ):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT OR IGNORE INTO emails (
-            message_id, data_recebimento, assunto, remetente, escritorio,
-            codigo, area, jornal, data_disponibilizacao, data_processamento
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        INSERT INTO emails (
+            message_id, data_recebimento, assunto, remetente,
+            escritorio, codigo, area, jornal,
+            data_disponibilizacao, data_processamento, url_email
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        message_id, data_recebimento, assunto, remetente, escritorio,
-        codigo, area, jornal, data_disponibilizacao, data_processamento
+        message_id, data_recebimento, assunto, remetente,
+        escritorio, codigo, area, jornal,
+        data_disponibilizacao, data_processamento, url_email
     ))
     conn.commit()
     conn.close()
+
+
 
 def registrar_recorte(
     message_id: str,
@@ -38,7 +45,8 @@ def registrar_recorte(
     secretaria: str,
     data_publicacao: str,
     publicacao: str,
-    tipo: str
+    tipo: str,
+    justificativa_ia: Optional[str] = None
 ) -> int:
     conn = get_connection()
     try:
@@ -46,16 +54,17 @@ def registrar_recorte(
         cursor.execute("""
             INSERT INTO recortes (
                 message_id, nome_pesquisado, tribunal, secretaria,
-                data_publicacao, publicacao, tipo
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                data_publicacao, publicacao, tipo, justificativa_ia
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             message_id, nome_pesquisado, tribunal, secretaria,
-            data_publicacao, publicacao, tipo
+            data_publicacao, publicacao, tipo, justificativa_ia
         ))
         conn.commit()
         return cursor.lastrowid
     finally:
         conn.close()
+
 
 def registrar_partes(id_recorte: int, partes: PartesProcesso):
     conn = get_connection()
@@ -149,4 +158,14 @@ def registrar_metadados_dict(id_recorte: int, dados: dict):
         print(f"❌ Falha ao registrar metadados: {e}")
     finally:
         conn.close()
+
+def email_ja_foi_processado(message_id: str) -> bool:
+    from app.database.db_connection import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM emails WHERE message_id = ?", (message_id,))
+    resultado = cursor.fetchone()
+    conn.close()
+    return resultado is not None
+
 
