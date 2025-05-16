@@ -1,0 +1,31 @@
+2025-04-11 15:34:06,210 - INFO - Validando pipeline de classificação...
+2025-04-11 16:03:08,189 - INFO - Validando pipeline...
+2025-04-11 16:45:59,137 - INFO - Validando pipeline...
+2025-04-11 16:55:11,642 - INFO - Validando pipeline...
+2025-04-11 16:56:43,634 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:56:43,638 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:12,657 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:12,659 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:13,738 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:13,740 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:14,250 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:14,252 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:14,722 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:14,724 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:14,922 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:14,934 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:15,074 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:15,077 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:15,554 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 16:57:15,558 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 17:11:20,543 - INFO - Validando pipeline...
+2025-04-11 17:13:18,565 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-11 17:13:18,568 - ERROR - Erro: too many values to unpack (expected 2)
+2025-04-14 14:48:11,267 - INFO - Validando pipeline...
+2025-04-14 14:48:45,488 - ERROR - Erro: cannot unpack non-iterable ClassificationResult object
+2025-04-14 14:48:49,010 - ERROR - Erro: cannot unpack non-iterable ClassificationResult object
+2025-04-14 14:52:21,765 - ERROR - Erro: cannot unpack non-iterable ClassificationResult object
+2025-04-14 14:52:21,767 - ERROR - Erro: cannot unpack non-iterable ClassificationResult object
+2025-04-14 14:57:03,831 - INFO - Validando pipeline...
+2025-04-14 14:57:52,912 - ERROR - Erro: cannot unpack non-iterable ClassificationResult object
+2025-04-14 14:57:57,918 - ERROR - Erro: cannot unpack non-iterable ClassificationResult object

@@ -1,0 +1,543 @@
+from bs4 import BeautifulSoup
+
+html = """
+<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN' 'http://www.w3.org/TR/html4/loose.dtd'><html><head>
+
+</head>
+
+<title>Publicações do dia : 17/03/2025 - Jornal CEARA</title><style type="text/css">
+
+<!--
+
+a {
+
+	color: #0000FF;
+
+}
+
+a:visited {
+
+	color: #0000FF;
+
+}
+
+a:hover {
+
+	color: #FF0000;
+
+}
+
+a:active {
+
+	color: #0000FF;
+
+}
+
+body,td,th {
+
+	font-family: Trebuchet MS;
+
+	font-size: 12px;
+
+	color: #000000;
+
+}
+
+.negrito {
+
+color:#FF0000;
+
+font-weight: bold;
+
+}
+
+body {
+
+	background-color: #FFFFFF;
+
+}
+
+-->
+
+</style><body>
+
+  				<p align="center">
+
+				    <a href="https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fserdon.com.br%2F&amp;data=05%7C02%7Csjur-coleta-serdon%40fgv.br%7C808046a210dc4e8fd50808dd6628812c%7C79f6b639ab1242808077bdbeef869b33%7C0%7C0%7C638779046379578751%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&amp;sdata=B%2BbiJkYzCXwAtNi%2FtwNa3JnKnw4xk0VxCugNEs0z9Fc%3D&amp;reserved=0" originalsrc="http://serdon.com.br/"><img src="http://www.serdon.com.br/imagens/sistema2/serdon.jpg" border="0"></a> 
+
+          </p>
+
+
+
+  <table width="100%" style="border:#999999" border="1" cellpadding="0" cellspacing="0" bordercolor="#FF0000">
+
+    <tr>
+
+      <td align="center" bgcolor="#F9CECC"><strong>Dados do Escritório </strong></td>
+
+    </tr>
+
+  </table>
+
+  <br><table borderColor="#999999" cellspacing="2" cellpadding="0" width="100%" border="1">
+
+<tbody>
+
+<tr>
+
+<td align="middle" bgcolor="#F9CECC" height="100"><span class="style1"><font size="4" face="Arial" ?b?="">
+
+<p>
+
+<center>
+
+segue o complemento da leitura
+
+</center></font>
+
+</p>
+
+</font>
+
+</span></b></b></td></tr></tbody></table><br></body>
+
+<body>
+
+
+
+  <table width="100%" border="1" cellpadding="0" cellspacing="2" bordercolor="#999999">
+
+
+
+    <tr>
+
+      <td width="25%" bgcolor="#FDEBEA"><strong>Escritório:</strong></td>
+
+      <td width="75%" bgcolor="#FDEBEA">FUNDACAO GETULIO VARGAS</td>
+
+    </tr>
+
+    <tr>
+
+      <td bgcolor="#FDEBEA"><strong>Código:</strong></td>
+
+      <td bgcolor="#FDEBEA">2185</td>
+
+    </tr>
+
+    <tr>
+
+      <td bgcolor="#FDEBEA"><strong>Área:</strong></td>
+
+      <td bgcolor="#FDEBEA">910</td>
+
+    </tr>
+
+    <tr>
+
+      <td bgcolor="#FDEBEA"><strong>Jornal:</strong></td>
+
+      <td bgcolor="#FDEBEA">CEARA</td>
+
+    </tr>
+
+    <tr>
+
+      <td bgcolor="#FDEBEA"><strong>Data de Disponibilização:</strong></td>
+
+      <td bgcolor="#FDEBEA">17/03/2025 | </td>
+
+    </tr>
+
+    <tr>
+
+      <td bgcolor="#FDEBEA"><strong>Tribunais encontrados:</strong></td>
+
+      <td bgcolor="#FDEBEA"></td>
+
+    </tr>
+
+  </table>
+
+  <br>
+
+
+
+					<table width="100%" style="border:#999999" border="1" cellpadding="0" cellspacing="0" bordercolor="#999999">
+
+
+
+					<tr>
+
+		  			<td align="center" bordercolor="#0066005" bgcolor="#FDEBEA"><strong>Resultado da Pesquisa</strong></td>
+
+					</tr>
+
+
+
+					</table>
+
+
+
+							<br>
+
+
+
+							<table width="100%" border="1" cellpadding="0" cellspacing="2" bordercolor="#999999">
+
+
+
+							<tr>
+
+							<td width="25%" bgcolor="#FDEBEA"><strong>Nome Pesquisado:</strong></td>
+
+							<td width="75%" bgcolor="#FDEBEA">FUNDACAO GETULIO VARGAS</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Tribunal:</strong></td>
+
+							<td bgcolor="#FDEBEA">JUSTICA FEDERAL - PJE</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Secretaria:</strong></td>
+
+							<td bgcolor="#FDEBEA">LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU</td>
+
+							</tr>
+
+								<tr>
+
+								<td bgcolor="#FDEBEA"><strong>Data de Publicação: </strong></td>
+
+								<td bgcolor="#FDEBEA">17/03/2025</td>
+
+								</tr>
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Publicação:</strong></td>
+
+							<td bgcolor="#FDEBEA"> Sr. Advogado, LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU (Ultimos 60 Dias) Esta pagina contem as listas diarias de intimacoes eletronicas dirigidas aos advogados e as partes disponibilizadas no Sistema PJe 1º Grau. As listas so contem as intimacoes disponibilizadas no Sistema PJe (nao constam das listas intimacoes relativas a processos fisicos). Cada lista e incluida nesta pagina no dia util seguinte ao da disponibilizacao das intimacoes eletronicas no Sistema PJe 1º Grau. As listas nao tem valor de intimacao e sim de comunicacao das intimacoes expedidas aos advogados por meio eletronico. Os processos em segredo de justica nao estao incluidos. ATENCAO: ESTE SERVICO NAO INTERFERE NA CONTAGEM DE <b><font color="#0000FF">PRAZO</font></b>S NOS PROCESSOS ELETRONICOS, OS QUAIS SEGUIRAO A FORMA PREVISTA NO ART. 5º DA LEI Nº 11.419/2006. Justica Federal no Ceara – JFCE Lista de intimacoes disponibilizadas no PJe 1º grau Data da disponibilizacao das intimacoes listadas: 17/03/2025 Total de registros: 2209 Relatorio gerado em : 18/03/2025 09:52:31 0000 - NPU: 0801168-98.2025.4.05.8100 Polo Ativo: JOSE EDVAR DI CASTRO JUNIOR Polo Passivo: <b><font color="red">FUNDACAO GETULIO VARGAS</font></b>/EMPRESA BRASILEIRA DE SERVICOS HOSPITALARES - EBSERH Parte a qual se refere a intimacao: EMPRESA BRASILEIRA DE SERVICOS HOSPITALARES - EBSERH Advogado ao qual e dirigida a intimacao: BRUNA LETICIA TEIXEIRA IBIAPINA OAB do advogado ao qual e dirigida a intimacao: PI7964 Advogados cadastrados no polo ativo: ARSENIA PARENTE BRECKENFELD BELMINO/SEAN KEVIN HUBMANN Advogados cadastrados no polo passivo: DECIO FLAVIO GONCALVES TORRES FREIRE/THIAGO LOPES CARDOSO CAMPOS/BRUNA LETICIA TEIXEIRA IBIAPINA/JOAO AURELIANO DIAS FILHO Data e hora da disponibilizaca o da Intimacao no Painel: 17/03/2025 11:22:39 Identificador do documento: 4058100.36112454
+
+
+
+		  					<br>
+
+
+
+
+
+							</a>
+
+
+
+							<br>
+
+
+
+		  					</td>
+
+							</tr>
+
+
+
+							</table>
+
+
+
+							<br>
+
+
+
+							<table width="100%" border="1" cellpadding="0" cellspacing="2" bordercolor="#999999">
+
+
+
+							<tr>
+
+							<td width="25%" bgcolor="#FDEBEA"><strong>Nome Pesquisado:</strong></td>
+
+							<td width="75%" bgcolor="#FDEBEA">FUNDACAO GETULIO VARGAS</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Tribunal:</strong></td>
+
+							<td bgcolor="#FDEBEA">JUSTICA FEDERAL - PJE</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Secretaria:</strong></td>
+
+							<td bgcolor="#FDEBEA">LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU</td>
+
+							</tr>
+
+								<tr>
+
+								<td bgcolor="#FDEBEA"><strong>Data de Publicação: </strong></td>
+
+								<td bgcolor="#FDEBEA">17/03/2025</td>
+
+								</tr>
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Publicação:</strong></td>
+
+							<td bgcolor="#FDEBEA"> Sr. Advogado, LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU (Ultimos 60 Dias) Esta pagina contem as listas diarias de intimacoes eletronicas dirigidas aos advogados e as partes disponibilizadas no Sistema PJe 1º Grau. As listas so contem as intimacoes disponibilizadas no Sistema PJe (nao constam das listas intimacoes relativas a processos fisicos). Cada lista e incluida nesta pagina no dia util seguinte ao da disponibilizacao das intimacoes eletronicas no Sistema PJe 1º Grau. As listas nao tem valor de intimacao e sim de comunicacao das intimacoes expedidas aos advogados por meio eletronico. Os processos em segredo de justica nao estao incluidos. ATENCAO: ESTE SERVICO NAO INTERFERE NA CONTAGEM DE <b><font color="#0000FF">PRAZO</font></b>S NOS PROCESSOS ELETRONICOS, OS QUAIS SEGUIRAO A FORMA PREVISTA NO ART. 5º DA LEI Nº 11.419/2006. Justica Federal no Ceara – JFCE Lista de intimacoes disponibilizadas no PJe 1º grau Data da disponibilizacao das intimacoes listadas: 17/03/2025 Total de registros: 2209 Relatorio gerado em : 18/03/2025 09:52:31 0000 - NPU: 0801337-85.2025.4.05.8100 Polo Ativo: LUCAS NEVES SOLON PETROLA Polo Passivo: <b><font color="red">FUNDACAO GETULIO VARGAS</font></b>/EMPRESA BRASILEIRA DE SERVICOS HOSPITALARES - EBSERH Parte a qual se refere a intimacao: LUCAS NEVES SOLON PETROLA Advogado ao qual e dirigida a intimacao: ARSENIA PARENTE BRECKENFELD BELMINO OAB do advogado ao qual e dirigida a intimacao: CE20205 Advogados cadastrados no polo ativo: ARSENIA PARENTE BRECKENFELD BELMINO/SEAN KEVIN HUBMANN Advogados cadastrados no polo passivo: BERNARDO AMARAL DE ALMEIDA MONTECHIARI MARCONDES/DECIO FLAVIO GONCALVES TORRES FREIRE Data e hora da disponibilizaca o da Intimacao no Painel: 17/03/2025 14:45:15 Identificador do documento: 4058100.36116300
+
+
+
+		  					<br>
+
+
+
+
+
+							</a>
+
+
+
+							<br>
+
+
+
+		  					</td>
+
+							</tr>
+
+
+
+							</table>
+
+
+
+							<br>
+
+
+
+							<table width="100%" border="1" cellpadding="0" cellspacing="2" bordercolor="#999999">
+
+
+
+							<tr>
+
+							<td width="25%" bgcolor="#FDEBEA"><strong>Nome Pesquisado:</strong></td>
+
+							<td width="75%" bgcolor="#FDEBEA">FUNDACAO GETULIO VARGAS</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Tribunal:</strong></td>
+
+							<td bgcolor="#FDEBEA">JUSTICA FEDERAL - PJE</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Secretaria:</strong></td>
+
+							<td bgcolor="#FDEBEA">LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU</td>
+
+							</tr>
+
+								<tr>
+
+								<td bgcolor="#FDEBEA"><strong>Data de Publicação: </strong></td>
+
+								<td bgcolor="#FDEBEA">17/03/2025</td>
+
+								</tr>
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Publicação:</strong></td>
+
+							<td bgcolor="#FDEBEA"> Sr. Advogado, LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU (Ultimos 60 Dias) Esta pagina contem as listas diarias de intimacoes eletronicas dirigidas aos advogados e as partes disponibilizadas no Sistema PJe 1º Grau. As listas so contem as intimacoes disponibilizadas no Sistema PJe (nao constam das listas intimacoes relativas a processos fisicos). Cada lista e incluida nesta pagina no dia util seguinte ao da disponibilizacao das intimacoes eletronicas no Sistema PJe 1º Grau. As listas nao tem valor de intimacao e sim de comunicacao das intimacoes expedidas aos advogados por meio eletronico. Os processos em segredo de justica nao estao incluidos. ATENCAO: ESTE SERVICO NAO INTERFERE NA CONTAGEM DE <b><font color="#0000FF">PRAZO</font></b>S NOS PROCESSOS ELETRONICOS, OS QUAIS SEGUIRAO A FORMA PREVISTA NO ART. 5º DA LEI Nº 11.419/2006. Justica Federal no Ceara – JFCE Lista de intimacoes disponibilizadas no PJe 1º grau Data da disponibilizacao das intimacoes listadas: 17/03/2025 Total de registros: 2209 Relatorio gerado em : 18/03/2025 09:52:31 0000 - NPU: 0801168-98.2025.4.05.8100 Polo Ativo: JOSE EDVAR DI CASTRO JUNIOR Polo Passivo: <b><font color="red">FUNDACAO GETULIO VARGAS</font></b>/EMPRESA BRASILEIRA DE SERVICOS HOSPITALARES - EBSERH Parte a qual se refere a intimacao: <b><font color="red">FUNDACAO GETULIO VARGAS</font></b> Advogado ao qual e dirigida a intimacao: DECIO FLAVIO GONCALVES TORRES FREIRE OAB do advogado ao qual e dirigida a intimacao: PE815A Advogados cadastrados no polo ativo: ARSENIA PARENTE BRECKENFELD BELMINO/SEAN KEVIN HUBMANN Advogados cadastrados no polo passivo: DECIO FLAVIO GONCALVES TORRES FREIRE/THIAGO LOPES CARDOSO CAMPOS/BRUNA LETICIA TEIXEIRA IBIAPINA/JOAO AURELIANO DIAS FILHO Data e hora da disponibilizaca o da Intimacao no Painel: 17/03/2025 11:22:39 Identificador do documento: 4058100.36112453
+
+
+
+		  					<br>
+
+
+
+
+
+							</a>
+
+
+
+							<br>
+
+
+
+		  					</td>
+
+							</tr>
+
+
+
+							</table>
+
+
+
+							<br>
+
+
+
+							<table width="100%" border="1" cellpadding="0" cellspacing="2" bordercolor="#999999">
+
+
+
+							<tr>
+
+							<td width="25%" bgcolor="#FDEBEA"><strong>Nome Pesquisado:</strong></td>
+
+							<td width="75%" bgcolor="#FDEBEA">FUNDACAO GETULIO VARGAS</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Tribunal:</strong></td>
+
+							<td bgcolor="#FDEBEA">JUSTICA FEDERAL - PJE</td>
+
+							</tr>
+
+
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Secretaria:</strong></td>
+
+							<td bgcolor="#FDEBEA">LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU</td>
+
+							</tr>
+
+								<tr>
+
+								<td bgcolor="#FDEBEA"><strong>Data de Publicação: </strong></td>
+
+								<td bgcolor="#FDEBEA">17/03/2025</td>
+
+								</tr>
+
+							<tr>
+
+							<td bgcolor="#FDEBEA"><strong>Publicação:</strong></td>
+
+							<td bgcolor="#FDEBEA"> Sr. Advogado, LISTAS DE INTIMACOES DISPONIBILIZADAS NO PJE 1º GRAU (Ultimos 60 Dias) Esta pagina contem as listas diarias de intimacoes eletronicas dirigidas aos advogados e as partes disponibilizadas no Sistema PJe 1º Grau. As listas so contem as intimacoes disponibilizadas no Sistema PJe (nao constam das listas intimacoes relativas a processos fisicos). Cada lista e incluida nesta pagina no dia util seguinte ao da disponibilizacao das intimacoes eletronicas no Sistema PJe 1º Grau. As listas nao tem valor de intimacao e sim de comunicacao das intimacoes expedidas aos advogados por meio eletronico. Os processos em segredo de justica nao estao incluidos. ATENCAO: ESTE SERVICO NAO INTERFERE NA CONTAGEM DE <b><font color="#0000FF">PRAZO</font></b>S NOS PROCESSOS ELETRONICOS, OS QUAIS SEGUIRAO A FORMA PREVISTA NO ART. 5º DA LEI Nº 11.419/2006. Justica Federal no Ceara – JFCE Lista de intimacoes disponibilizadas no PJe 1º grau Data da disponibilizacao das intimacoes listadas: 17/03/2025 Total de registros: 2209 Relatorio gerado em : 18/03/2025 09:52:31 0000 - NPU: 0801168-98.2025.4.05.8100 Polo Ativo: JOSE EDVAR DI CASTRO JUNIOR Polo Passivo: <b><font color="red">FUNDACAO GETULIO VARGAS</font></b>/EMPRESA BRASILEIRA DE SERVICOS HOSPITALARES - EBSERH Parte a qual se refere a intimacao: JOSE EDVAR DI CASTRO JUNIOR Advogado ao qual e dirigida a intimacao: ARSENIA PARENTE BRECKENFELD BELMINO OAB do advogado ao qual e dirigida a intimacao: CE20205 Advogados cadastrados no polo ativo: ARSENIA PARENTE BRECKENFELD BELMINO/SEAN KEVIN HUBMANN Advogados cadastrados no polo passivo: DECIO FLAVIO GONCALVES TORRES FREIRE/THIAGO LOPES CARDOSO CAMPOS/BRUNA LETICIA TEIXEIRA IBIAPINA/JOAO AURELIANO DIAS FILHO Data e hora da disponibilizaca o da Intimacao no Painel: 17/03/2025 11:22:39 Identificador do documento: 4058100.36112452
+
+
+
+		  					<br>
+
+
+
+
+
+							</a>
+
+
+
+							<br>
+
+
+
+		  					</td>
+
+							</tr>
+
+
+
+							</table>
+
+	  <br>
+
+	  <br>
+
+	  <p align="center">
+
+	   <b>Tel:</b>(21)2205-7812 <b>| Whatsapp:</b> (21)98700-5922
+
+	  <strong>Site:</strong> <a href="https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fserdon.com.br%2F&amp;data=05%7C02%7Csjur-coleta-serdon%40fgv.br%7C808046a210dc4e8fd50808dd6628812c%7C79f6b639ab1242808077bdbeef869b33%7C0%7C0%7C638779046379598023%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&amp;sdata=RnwMeuA74uaW2AWqATI8VWSiEhuzi0FfS3FC9oTFAfQ%3D&amp;reserved=0" originalsrc="http://serdon.com.br/">serdon.com.br</a> -
+
+	  <strong>E-mail: </strong> <a href="mailto:contato@serdon.com.br">contato@serdon.com.br</a>
+
+	  </body>
+
+	  </html>
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+
+soup = BeautifulSoup(html, "html.parser")
+
+campos = {
+    "escritorio": ["Escritório"],
+    "codigo": ["Código"],
+    "area": ["Área"],
+    "jornal": ["Jornal", "Jornais"],
+    "data_disponibilizacao": ["Data de Disponibilização", "Data"]
+}
+
+resultado = {
+    "escritorio": None,
+    "codigo": None,
+    "area": None,
+    "jornal": None,
+    "data_disponibilizacao": None
+}
+
+# Procurar a tabela correta entre várias
+tabelas = soup.find_all("table")
+for tabela in tabelas:
+    for row in tabela.find_all("tr"):
+        cols = row.find_all("td")
+        if len(cols) >= 2:
+            chave_raw = cols[0].get_text(strip=True).replace(":", "")
+            valor = cols[1].get_text(strip=True)
+            for k, nomes_aceitos in campos.items():
+                if any(chave_raw.lower() == nome.lower() for nome in nomes_aceitos):
+                    resultado[k] = valor
+
+print(resultado)

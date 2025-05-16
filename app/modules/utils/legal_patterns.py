@@ -12,6 +12,8 @@ CITATION_PATTERNS = [
     r'(?i)comunicacao\s*:\s*citacao',
     r'(?i)finalidade\s*:\s*citacao',
     r'(?i)cite-se',
+    r'(?i)citem-se',
+    r'(?i)citada para todos os termos',
     r'(?i)citar\s+a\s+parte',
     r'(?i)citacao\s+para'
 ]

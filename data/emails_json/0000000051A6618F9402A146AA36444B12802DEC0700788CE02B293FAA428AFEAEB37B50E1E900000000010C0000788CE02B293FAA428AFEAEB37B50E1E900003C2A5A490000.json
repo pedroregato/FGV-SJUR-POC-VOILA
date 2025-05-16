@@ -1,0 +1,23 @@
+{
+    "data_recebimento": "2025-05-07 12:05:46",
+    "assunto": "Publ.: 07/05/2025 - SANTA CATARINA",
+    "remetente": "SERDONRECORTES@recortediario.com.br",
+    "message_id": "0000000051A6618F9402A146AA36444B12802DEC0700788CE02B293FAA428AFEAEB37B50E1E900000000010C0000788CE02B293FAA428AFEAEB37B50E1E900003C2A5A490000",
+    "dados_escritorio": {
+        "escritorio": "FUNDACAO GETULIO VARGAS",
+        "codigo": "2185",
+        "area": "910",
+        "jornal": "ACRE - ALAGOAS - AMAPA - AMAZONAS - BAHIA - CEARA - DISTRITO FEDERAL - ESPIRITO SANTO - GOIAS - MARANHAO - MATO GROSSO - MATO GROSSO DO SUL - MINAS GERAIS - PARA - PARAIBA - PARANA - PERNAMBUCO - PIAUI - RIO DE JANEIRO - RIO GRANDE DO NORTE - RIO GRANDE D",
+        "data_disponibilizacao": "07/05/2025 |"
+    },
+    "pesquisas": [
+        {
+            "nome_pesquisado": "FUNDACAO GETULIO VARGAS",
+            "tribunal": "JUSTICA FEDERAL - DJN",
+            "secretaria": "3ª Vara Federal de Florianopolis",
+            "data_publicacao": "08/05/2025",
+            "publicacao": "Publicacao Processo: 5015132-20.2025.4.04.7200 Orgao: 3ª Vara Federal de Florianopolis Data de disponibilizacao: 07/05/2025 Tipo de comunicacao: Lista de distribuicao Meio: Diario de Justica Eletronico Nacional Inteiro teor: https://eproc.jfsc.jus.br/eprocV2/externo_controlador.php?acao=processo_distribuicao_listar&sinPesquisar=S&numProcesso=50151322020254047200&hash=43604411681f148cff691f6748f2fe5c7ac6340fa34270892aa02795de262002 Parte: FELIPE DO NASCIMENTO SIRIACO Parte: FUNDACAO GETULIO VARGAS - FGV Advogado: FELIPE DO NASCIMENTO SIRIACO - OAB SP-SP432327 Conteudo: Processo 5015132-20.2025.4.04.7200 distribuido para 3ª Vara Federal de Florianopolis na data de 05/05/2025. |comunicacao_id: 265475151|",
+            "processos": []
+        }
+    ]
+}

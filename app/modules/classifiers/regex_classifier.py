@@ -4,7 +4,7 @@ Módulo para classificação baseada em regex
 import re
 from dataclasses import dataclass
 from typing import Optional
-from ..utils.legal_patterns import CITATION_PATTERNS, INTIMATION_PATTERNS
+from app.modules.utils.legal_patterns import CITATION_PATTERNS, INTIMATION_PATTERNS
 
 
 @dataclass

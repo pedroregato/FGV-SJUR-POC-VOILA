@@ -1,0 +1,31 @@
+{
+    "data_recebimento": "2025-05-08 11:40:52",
+    "assunto": "Publ.: 08/05/2025 - RORAIMA",
+    "remetente": "SERDONRECORTES@recortediario.com.br",
+    "message_id": "0000000051A6618F9402A146AA36444B12802DEC0700788CE02B293FAA428AFEAEB37B50E1E900000000010C0000788CE02B293FAA428AFEAEB37B50E1E9000040517EDC0000",
+    "dados_escritorio": {
+        "escritorio": "FUNDACAO GETULIO VARGAS",
+        "codigo": "2185",
+        "area": "910",
+        "jornal": "ACRE - ALAGOAS - AMAPA - AMAZONAS - BAHIA - CEARA - DISTRITO FEDERAL - ESPIRITO SANTO - GOIAS - MARANHAO - MATO GROSSO - MATO GROSSO DO SUL - MINAS GERAIS - PARA - PARAIBA - PARANA - PERNAMBUCO - PIAUI - RIO DE JANEIRO - RIO GRANDE DO NORTE - RIO GRANDE D",
+        "data_disponibilizacao": "08/05/2025 |"
+    },
+    "pesquisas": [
+        {
+            "nome_pesquisado": "FUNDACAO GETULIO VARGAS",
+            "tribunal": "TRIBUNAL DE JUSTICA DE RORAIMA - DJN",
+            "secretaria": "1ª Vara Civel",
+            "data_publicacao": "09/05/2025",
+            "publicacao": "Publicacao Processo: 0838904-73.2024.8.23.0010 Orgao: 1ª Vara Civel Data de disponibilizacao: 08/05/2025 Tipo de comunicacao: Intimacao Meio: Diario de Justica Eletronico Nacional Inteiro teor: Parte: FUNDACAO GETULIO VARGAS REPRESENTADO(A) POR JOSE AUGUSTO DE REZENDE JUNIOR Advogado: JOSE AUGUSTO DE REZENDE JUNIOR - OAB RR-489 Conteudo:",
+            "processos": []
+        },
+        {
+            "nome_pesquisado": "FUNDACAO GETULIO VARGAS",
+            "tribunal": "TRIBUNAL DE JUSTICA DE RORAIMA - DJN",
+            "secretaria": "1ª Vara de Fazenda Publica",
+            "data_publicacao": "09/05/2025",
+            "publicacao": "Publicacao Processo: 0801216-43.2025.8.23.0010 Orgao: 1ª Vara de Fazenda Publica Data de disponibilizacao: 08/05/2025 Tipo de comunicacao: Intimacao Meio: Diario de Justica Eletronico Nacional Inteiro teor: Parte: ERASMO HENRIQUE DE ARAUJO NASCIMENTO Parte: ESTADO DE RORAIMA Parte: PRESIDENTE DA FUNDACAO GETULIO VARGAS - FGV Advogado: EDIVAL BRAGA - OAB RR-487 Advogado: VANDRE BORGES DE AMORIM - OAB DF-75278 Advogado: DECIO FLAVIO GONCALVES TORRES FREIRE - OAB MG-56543 Conteudo:",
+            "processos": []
+        }
+    ]
+}

@@ -1,8 +1,13 @@
-version: '3'
 services:
-  sjur-poc:
+  sjur-app:
     build: .
+    container_name: sjur-poc
     ports:
-      - "8866:8866"
+      - "8501:8501"
     volumes:
-      - ./avaliacoes:/app/avaliacoes
+      - ./data:/app/data            # <-- persistência do banco
+      - ./logs:/app/logs            # (se desejar manter logs)
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=America/Sao_Paulo
+    restart: unless-stopped

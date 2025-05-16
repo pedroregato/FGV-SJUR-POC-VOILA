@@ -1,0 +1,23 @@
+{
+    "data_recebimento": "2025-05-05 12:14:37",
+    "assunto": "Publ.: 05/05/2025 - PARANA",
+    "remetente": "SERDONRECORTES@recortediario.com.br",
+    "message_id": "0000000051A6618F9402A146AA36444B12802DEC0700788CE02B293FAA428AFEAEB37B50E1E900000000010C0000788CE02B293FAA428AFEAEB37B50E1E900003C2A59D70000",
+    "dados_escritorio": {
+        "escritorio": "FUNDACAO GETULIO VARGAS",
+        "codigo": "2185",
+        "area": "910",
+        "jornal": "ACRE - ALAGOAS - AMAPA - AMAZONAS - BAHIA - CEARA - DISTRITO FEDERAL - ESPIRITO SANTO - GOIAS - MARANHAO - MATO GROSSO - MATO GROSSO DO SUL - MINAS GERAIS - PARA - PARAIBA - PARANA - PERNAMBUCO - PIAUI - RIO DE JANEIRO - RIO GRANDE DO NORTE - RIO GRANDE D",
+        "data_disponibilizacao": "05/05/2025 |"
+    },
+    "pesquisas": [
+        {
+            "nome_pesquisado": "FUNDACAO GETULIO VARGAS",
+            "tribunal": "TRIBUNAL DE JUSTICA - DJN",
+            "secretaria": "4ª Vara Civel de Cascavel",
+            "data_publicacao": "06/05/2025",
+            "publicacao": "Publicacao Processo: 0010921-41.2017.8.16.0021 Orgao: 4ª Vara Civel de Cascavel Data de disponibilizacao: 05/05/2025 Tipo de comunicacao: Intimacao Meio: Diario de Justica Eletronico Nacional Inteiro teor: https://projudi.tjpr.jus.br/projudi/processo/validacaoDocumentos.do?_tj=8a6c53f8698c7ff7826b4c776d71316d1925abc508bbf0c37395a1a6705262336d03745680891e445b18ff6d6bed665457acbeb4ecd64299 Parte: FUNDACAO GETULIO VARGAS Advogado: ANDRE ALVES DE DEUS - OAB PR-60357 Conteudo: Intimacao referente ao movimento (seq. 308) EXPEDICAO DE BUSCA SNIPER (02/05/2025). Acesse o sistema Projudi do Tribunal de Justica do Parana para mais detalhes. Inicio do PRAZO : 12/05/2025, salvo se for realizada a leitura antecipada no Projudi. |comunicacao_id: 264374723|",
+            "processos": []
+        }
+    ]
+}

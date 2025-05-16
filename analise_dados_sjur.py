@@ -18,6 +18,33 @@ st.set_page_config(
     page_icon="📊"
 )
 
+from app.database.db_connection import DB_PATH
+
+def check_health():
+    """Exibe o status do banco de dados na interface do usuário."""
+    try:
+        if not DB_PATH.exists():
+            st.error(f"❌ Banco de dados não encontrado em: `{DB_PATH}`")
+            return
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tabelas = {row[0] for row in cursor.fetchall()}
+
+        tabelas_esperadas = {"emails", "recortes", "partes", "metadados"}
+        faltando = tabelas_esperadas - tabelas
+
+        if faltando:
+            st.warning(f"⚠️ Banco conectado, mas faltam tabelas: {', '.join(faltando)}")
+        else:
+            st.success("✅ Banco de dados carregado e íntegro.")
+
+        conn.close()
+
+    except Exception as e:
+        st.error(f"Erro ao verificar integridade do banco: {str(e)}")
+
 
 # --- Funções principais ---
 @st.cache_data(ttl=3600, show_spinner="Carregando dados do banco...")
@@ -137,7 +164,7 @@ def aplicar_filtros(
         emails_filtrados = emails.copy()
         recortes_filtrados = recortes.copy()
 
-        # Aplicação dos filtros com tratamento de erros
+        # Filtros nos e-mails
         if filtros['assunto']:
             emails_filtrados = emails_filtrados[
                 emails_filtrados["assunto"].str.contains(
@@ -159,55 +186,58 @@ def aplicar_filtros(
                 )
             ]
 
-        # Filtros de data com verificação de NaT
         if filtros['data_de']:
             emails_filtrados = emails_filtrados[
                 (emails_filtrados["data_recebimento"].notna()) &
                 (emails_filtrados["data_recebimento"].dt.date >= filtros['data_de'])
-                ]
+            ]
 
         if filtros['data_ate']:
             emails_filtrados = emails_filtrados[
                 (emails_filtrados["data_recebimento"].notna()) &
                 (emails_filtrados["data_recebimento"].dt.date <= filtros['data_ate'])
-                ]
+            ]
 
         # Filtros nos recortes
-        if filtros['tipo'] != "(Todos)":
-            recortes_filtrados = recortes_filtrados[
-                recortes_filtrados["tipo"] == filtros['tipo']
-                ]
-
         if filtros['data_pub_de']:
             recortes_filtrados = recortes_filtrados[
                 (recortes_filtrados["data_publicacao"].notna()) &
                 (recortes_filtrados["data_publicacao"].dt.date >= filtros['data_pub_de'])
-                ]
+            ]
 
         if filtros['data_pub_ate']:
             recortes_filtrados = recortes_filtrados[
                 (recortes_filtrados["data_publicacao"].notna()) &
                 (recortes_filtrados["data_publicacao"].dt.date <= filtros['data_pub_ate'])
-                ]
+            ]
 
-        # Filtro por réu com tratamento de valores nulos
+        # Aplicação combinada do filtro por tipo E por réu
+        tipo_filtrado = recortes_filtrados.copy()
+
+        if filtros['tipo'] != "(Todos)":
+            tipo_filtrado = tipo_filtrado[
+                tipo_filtrado["tipo"] == filtros['tipo']
+            ]
+
         if filtros['reu']:
             try:
                 ids_com_reu = partes[
-                    (partes["papel"].str.lower() == "réu") &
-                    (partes["parte"].str.contains(
-                        filtros['reu'], case=False, na=False, regex=False
-                    ))
-                    ]["id_recorte"].unique().tolist()
+                    (partes["papel"].str.lower() == "reu") &
+                    (partes["parte"].str.contains(filtros['reu'], case=False, na=False, regex=False))
+                ]["id_recorte"].unique().tolist()
 
-                recortes_filtrados = recortes_filtrados[
-                    recortes_filtrados["id"].isin(ids_com_reu)
+                # Interseção: tipo AND réu
+                tipo_filtrado = tipo_filtrado[
+                    tipo_filtrado["id"].isin(ids_com_reu)
                 ]
             except Exception as e:
                 logger.error(f"Erro ao filtrar por réu: {str(e)}")
                 st.warning("Erro ao aplicar filtro por réu")
 
-        # Cruzar filtros: emails que têm recortes filtrados
+        # Resultado final dos recortes filtrados
+        recortes_filtrados = tipo_filtrado
+
+        # Emails vinculados aos recortes resultantes
         emails_filtrados = emails_filtrados[
             emails_filtrados["message_id"].isin(recortes_filtrados["message_id"])
         ]
@@ -218,6 +248,7 @@ def aplicar_filtros(
         logger.error(f"Erro ao aplicar filtros: {str(e)}", exc_info=True)
         st.error("Ocorreu um erro ao aplicar os filtros. Verifique os dados e tente novamente.")
         return pd.DataFrame(), pd.DataFrame()
+
 
 
 def formatar_data(data) -> str:
@@ -342,6 +373,9 @@ def exibir_recortes(
 # --- Página Principal ---
 def main():
     st.title("📬 Análise dos Dados do Pipeline SJUR")
+
+    # Verificação visual da saúde do banco
+    check_health()
 
     # Carregar dados
     with st.spinner("Carregando dados do banco..."):
