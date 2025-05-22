@@ -6,6 +6,11 @@ from typing import Optional, Tuple, Literal
 from app.modules.prompts.prompt_definitions import carregar_prompt_custom
 from llama_cpp import Llama
 
+try:
+    from llama_cpp import Llama
+except ImportError:
+    print("⚠️ Para a POC que estamos realizando vamos ignorar a utilização de llama_cpp no Dockerfile.")
+
 
 ClassificationLabel = Literal["citação", "intimação", "não previsto"]
 

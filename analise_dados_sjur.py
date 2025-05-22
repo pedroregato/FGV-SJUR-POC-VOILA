@@ -97,60 +97,44 @@ def carregar_dados() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataF
             conn.close()
 
 
-def configurar_sidebar(recortes: pd.DataFrame) -> Dict[str, Any]:
+def configurar_sidebar(recortes: pd.DataFrame, metadados: pd.DataFrame) -> Dict[str, Any]:
     """Configura todos os filtros na sidebar e retorna um dicionário com os valores"""
     st.sidebar.header("🔍 Filtros Avançados")
 
-    # Filtros de data com validação
     min_date = date(2000, 1, 1)
     max_date = date.today()
+
+    # Opções de unidade_fgv, incluindo vazios como "(Vazio)"
+    unidades = metadados["unidade_fgv"].fillna("(Vazio)").unique().tolist()
+    unidades_opcoes = ["(Todos)"] + sorted(unidades, key=lambda x: x.lower())
+
+    # Opções de número de processo (ordenado desc.)
+    processos = metadados["numero_processo"].dropna().unique().tolist()
+    processos_ordenados = sorted(processos, reverse=True)
+    processos_opcoes = ["(Todos)"] + processos_ordenados
 
     filtros = {
         'assunto': st.sidebar.text_input("Filtrar por assunto"),
         'remetente': st.sidebar.text_input("Filtrar por remetente"),
-        'unidade': st.sidebar.text_input("Filtrar por unidade FGV"),
-        'data_de': st.sidebar.date_input(
-            "Data de recebimento (de)",
-            value=None,
-            min_value=min_date,
-            max_value=max_date
-        ),
-        'data_ate': st.sidebar.date_input(
-            "Data de recebimento (até)",
-            value=None,
-            min_value=min_date,
-            max_value=max_date
-        ),
-        'data_pub_de': st.sidebar.date_input(
-            "Data de publicação (de)",
-            value=None,
-            min_value=min_date,
-            max_value=max_date,
-            key="data_pub_de"
-        ),
-        'data_pub_ate': st.sidebar.date_input(
-            "Data de publicação (até)",
-            value=None,
-            min_value=min_date,
-            max_value=max_date,  # Corrigido aqui
-            key="data_pub_ate"
-        ),
-        'tipo': st.sidebar.selectbox(
-            "Filtrar por tipo de recorte",
-            ["(Todos)"] + sorted(recortes["tipo"].dropna().unique().tolist())
-        ),
+        'unidade': st.sidebar.text_input("Filtrar por unidade do e-mail"),
+        'unidade_fgv': st.sidebar.selectbox("Filtrar por Unidade FGV (metadado)", unidades_opcoes),  # atualizado
+        'numero_processo': st.sidebar.selectbox("Filtrar por Número do Processo", processos_opcoes),  # novo
+        'data_de': st.sidebar.date_input("Data de recebimento (de)", value=None, min_value=min_date, max_value=max_date),
+        'data_ate': st.sidebar.date_input("Data de recebimento (até)", value=None, min_value=min_date, max_value=max_date),
+        'data_pub_de': st.sidebar.date_input("Data de publicação (de)", value=None, min_value=min_date, max_value=max_date, key="data_pub_de"),
+        'data_pub_ate': st.sidebar.date_input("Data de publicação (até)", value=None, min_value=min_date, max_value=max_date, key="data_pub_ate"),
+        'tipo': st.sidebar.selectbox("Filtrar por tipo de recorte", ["(Todos)"] + sorted(recortes["tipo"].dropna().unique().tolist())),
         'reu': st.sidebar.text_input("Filtrar por réu (nome ou parte do nome)"),
         'keywords': st.sidebar.text_input("Palavras-chave para destacar (separadas por vírgula)")
     }
 
-    # Validação cruzada das datas
     if filtros['data_de'] and filtros['data_ate'] and filtros['data_de'] > filtros['data_ate']:
         st.sidebar.error("A data 'de' deve ser anterior à data 'até'")
-
     if filtros['data_pub_de'] and filtros['data_pub_ate'] and filtros['data_pub_de'] > filtros['data_pub_ate']:
         st.sidebar.error("A data de publicação 'de' deve ser anterior à data 'até'")
 
     return filtros
+
 
 def aplicar_filtros(
         emails: pd.DataFrame,
@@ -382,13 +366,33 @@ def main():
         emails, recortes, partes, metadados = carregar_dados()
 
     # Configurar sidebar e obter filtros
-    filtros = configurar_sidebar(recortes)
+    filtros = configurar_sidebar(recortes, metadados)
+
 
     # Aplicar filtros
     with st.spinner("Aplicando filtros..."):
         emails_filtrados, recortes_filtrados = aplicar_filtros(
             emails, recortes, partes, filtros
         )
+
+    # 🔍 Filtro por Unidade FGV
+    if filtros.get("unidade_fgv") and filtros["unidade_fgv"] != "(Todos)":
+        valor = None if filtros["unidade_fgv"] == "(Vazio)" else filtros["unidade_fgv"]
+        ids_unidade = metadados[
+            metadados["unidade_fgv"].fillna("(Vazio)") == filtros["unidade_fgv"]
+            ]["id_recorte"].unique().tolist()
+
+        recortes_filtrados = recortes_filtrados[recortes_filtrados["id"].isin(ids_unidade)]
+        emails_filtrados = emails_filtrados[emails_filtrados["message_id"].isin(recortes_filtrados["message_id"])]
+
+    # 🔍 Filtro por Número do Processo
+    if filtros.get("numero_processo") and filtros["numero_processo"] != "(Todos)":
+        ids_proc = metadados[
+            metadados["numero_processo"] == filtros["numero_processo"]
+            ]["id_recorte"].unique().tolist()
+
+        recortes_filtrados = recortes_filtrados[recortes_filtrados["id"].isin(ids_proc)]
+        emails_filtrados = emails_filtrados[emails_filtrados["message_id"].isin(recortes_filtrados["message_id"])]
 
     # Mostrar estatísticas na sidebar
     st.sidebar.markdown("---")

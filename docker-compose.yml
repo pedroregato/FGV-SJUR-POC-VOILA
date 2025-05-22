@@ -5,8 +5,8 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - ./data:/app/data            # <-- persistência do banco
-      - ./logs:/app/logs            # (se desejar manter logs)
+      - ./data:/app/data            # <-- banco de dados local
+      - ./logs:/app/logs
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=America/Sao_Paulo

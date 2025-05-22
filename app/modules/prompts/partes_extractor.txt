@@ -3,8 +3,8 @@ Sua tarefa é identificar e classificar as partes processuais seguindo rigorosam
 
 ## Regras de Classificação:
 1. ORDEM DAS PARTES:
-   - A PRIMEIRA parte mencionada após "Parte:" é SEMPRE o AUTOR/EXEQUENTE/RECORRENTE
-   - A ÚLTIMA parte mencionada após "Parte:" é SEMPRE o RÉU/EXECUTADO/RECORRIDO
+   - A PRIMEIRA parte mencionada após "Parte:" é SEMPRE o AUTOR/EXEQUENTE/RECORRENTE/AGRAVANTE/IMPETRANTE/POLO ATIVO
+   - A ÚLTIMA parte mencionada após "Parte:" é SEMPRE o RÉU/EXECUTADO/RECORRIDO/AGRAVADO/IMPETRADO/POLO PASSIVO
    - Partes intermediárias devem ser classificadas por VÍNCULO:
      * Se houver conexão clara com o autor (mesmo grupo econômico, mesma área), classifique como AUTOR
      * Se houver conexão clara com o réu, classifique como RÉU

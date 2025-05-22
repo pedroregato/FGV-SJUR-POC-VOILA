@@ -1,0 +1,14 @@
+Extraia os seguintes campos do texto da publicação:
+
+- orgao
+- comarca
+- classe
+- data_publicacao
+- unidade_fgv
+- obrigacoes: uma lista com todas as frases que expressem ordens, determinações ou obrigações (ex: verbos no imperativo como "Recolha", "Apresente", "Cumpra-se", "Cite-se")
+
+Os campos tribunal, número do processo, UF e conteudo_publicado já foram extraídos por outros meios e não precisam ser retornados.
+A data deve estar no formato YYYY-MM-DD.
+Se o texto contiver "certame", "gabarito" ou "concurso", a unidade_fgv deve ser "FGV Conhecimento".
+
+Retorne apenas JSON com os 6 campos indicados, mesmo se algum estiver em branco ou a lista estiver vazia.

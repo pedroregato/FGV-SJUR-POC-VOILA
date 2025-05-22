@@ -30,6 +30,10 @@ Você é um classificador jurídico especializado em documentos do Poder Judici�
 ### C) Outros Padrões de Citação:
 - "Determino a citação de [parte]" + prazo
 - "Cite-se [parte] para [finalidade] em [prazo]"
+- "Citem-se as [partes] para [finalidade] em [prazo]"
+- "Citando as [partes] para [finalidade] em [prazo]"
+- "Citando a [parte] para [finalidade] em [prazo]"
+- "Cito a [parte] para [finalidade] em [prazo]"
 
 ---
 

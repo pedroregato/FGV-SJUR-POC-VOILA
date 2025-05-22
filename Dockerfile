@@ -11,6 +11,9 @@ WORKDIR /app
 # Copia arquivos do projeto (excluindo os ignorados no .dockerignore)
 COPY . /app
 
+# Copia arquivos do banco de dados
+COPY data/sjur_recortes.db /app/data/sjur_recortes.db
+
 # Instala dependências do sistema (ajuste se necessário)
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -21,7 +24,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 # Instala o módulo llama_cpp_python a partir do código-fonte local
-RUN pip install app/llama.cpp
+# RUN pip install app/llama.cpp
 
 # Expondo a porta usada pelo Streamlit
 EXPOSE 8501
