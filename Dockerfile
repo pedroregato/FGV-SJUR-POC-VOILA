@@ -27,6 +27,7 @@ RUN pip install -r requirements.txt
 # Instalação do llama desabilitada (não usada na POC)
 # RUN pip install app/llama.cpp
 
+
 # Expondo a porta usada pelo Streamlit
 EXPOSE 8501
 
