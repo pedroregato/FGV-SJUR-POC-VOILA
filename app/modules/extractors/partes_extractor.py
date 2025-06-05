@@ -66,8 +66,9 @@ Sua tarefa é identificar e classificar as partes processuais seguindo rigorosam
      * advogados_reu: [nomes]
 
 ## Sinônimos
-1. Sinônimos de réu: impetrado, reu, coator, demandado     
-2. Sinônimos de autor: impetrante, requerente, demandante
+1. Sinônimos de réu: impetrado, reu, coator, demandado, agravado, executado, ré, recorrido     
+2. Sinônimos de autor: impetrante, requerente, demandante, agravante, exequente, autora, recorrente
+Estas palavras 
 
 ## Exemplo 1:
 Input: 

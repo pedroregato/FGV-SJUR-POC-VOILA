@@ -7,8 +7,17 @@ import streamlit as st
 DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "sjur_recortes.db"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+print(f'DB_PATH: {DB_PATH}')
+
 # Configura logger local
 logger = logging.getLogger(__name__)
+
+# Verificação reforçada
+if not DB_PATH.is_file():
+    logger.error(f"ERRO CRÍTICO: O caminho {DB_PATH} não é um arquivo válido")
+    logger.error("Verifique se o volume foi montado corretamente no container")
+    st.error("Banco de dados não encontrado - Contate o administrador")
+    st.stop()
 
 # Tabelas obrigatórias
 TABELAS_ESPERADAS = {"emails", "recortes", "partes", "metadados"}
@@ -54,6 +63,6 @@ def get_connection():
         return conn
 
     except sqlite3.Error as e:
-        logger.exception("Erro ao conectar ao banco SQLite")
-        st.error("Erro ao conectar ao banco de dados. Verifique a integridade do arquivo.")
+        logger.exception(f"Erro ao conectar ao banco SQLite em {DB_PATH}")
+        st.error(f"Erro ao conectar ao banco de dados. Verifique a integridade do arquivo em {DB_PATH}.")
         st.stop()

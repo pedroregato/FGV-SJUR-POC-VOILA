@@ -1,23 +1,40 @@
-version: '3.8'
-
 services:
   sjur-app:
     build:
       context: .
       args:
-        MODE: ${MODE}  # Lê do .env
+        MODE: ${MODE:-development}
     container_name: sjur-poc
+    hostname: sjur-app
     ports:
       - "8501:8501"
+      - "8000:8000"
     volumes:
-      - ./data:/app/data            # banco de dados local
-      - ./logs:/app/logs            # logs da aplicação
-      # Apenas se MODE=prod (certificados montados pela infraestrutura)
-      - ./certs/server.crt:/etc/ssl/certs/server.crt
-      - ./certs/server.key:/etc/ssl/certs/server.key
+      - sjur-data:/app/data:rw
+      - ./logs:/app/logs:rw
+      - ./certs:/etc/ssl/certs:ro
     environment:
+      - MODE=${MODE:-development}
       - PYTHONUNBUFFERED=1
       - TZ=America/Sao_Paulo
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - BROWSER_GATHERUSAGESTATS=false
+
+
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  sjur-data:

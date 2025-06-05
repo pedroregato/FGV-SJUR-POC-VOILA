@@ -3,7 +3,7 @@ from .classifiers.deepseek_classifier import DeepSeekLegalClassifier
 from .classifiers.gpt35_classifier import GPT35LegalClassifier
 from .classifiers.gemini_classifier import GeminiLegalClassifier
 from .classifiers.regex_classifier import RegexLegalClassifier, RegexClassificationResult
-from .classifiers.llama_classifier import LlamaLocalClassifier
+# from .classifiers.llama_classifier import LlamaLocalClassifier
 from .utilitarios import inicializar_base_avaliacoes, registrar_avaliacao
 from .prompts.prompt_definitions import carregar_prompt_custom
 from .search_tokens import (
@@ -21,7 +21,7 @@ __all__ = [
     'RegexLegalClassifier',
     'GeminiLegalClassifier',
     'RegexClassificationResult',
-    'LlamaLocalClassifier',
+    ## 'LlamaLocalClassifier',
     'carregar_prompt_custom',
     'inicializar_base_avaliacoes',
     'registrar_avaliacao',
