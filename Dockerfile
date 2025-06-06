@@ -1,5 +1,5 @@
 # Etapa base
-FROM python:3.11-slim-buster
+FROM python:3.11-slim
 
 # Variáveis de ambiente padrão
 ENV PYTHONDONTWRITEBYTECODE=1 \
