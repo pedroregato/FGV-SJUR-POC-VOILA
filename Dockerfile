@@ -1,4 +1,4 @@
-# Etapa base
+# Etapa base --- confira
 FROM python:3.11-slim
 
 # Variáveis de ambiente padrão
