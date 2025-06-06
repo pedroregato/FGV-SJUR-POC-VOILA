@@ -29,8 +29,10 @@ COPY . .
 
 # Copia configuração NGINX e certificados SSL
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
-COPY certs/server.crt /etc/ssl/certs/server.crt
-COPY certs/server.key /etc/ssl/certs/server.key
+
+# Os certificados são fornecidos no ambiente de execução, não precisam ser copiados.
+# COPY certs/server.crt /etc/ssl/certs/server.crt
+# COPY certs/server.key /etc/ssl/certs/server.key
 
 # Cria usuário e ajusta permissões
 RUN useradd -r -s /bin/false appuser && chown -R appuser:appuser /app
