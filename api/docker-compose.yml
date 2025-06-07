@@ -1,0 +1,41 @@
+services:
+  sjur-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODE: ${MODE:-prod}
+    container_name: sjur-api
+    hostname: sjur-api
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - sjur-data:/app/data:rw
+      - ./logs:/app/logs:rw
+
+    environment:
+      - MODE=${MODE:-prod}
+      - PYTHONUNBUFFERED=1
+      - TZ=America/Sao_Paulo
+
+    env_file:
+      - .env
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  sjur-data:

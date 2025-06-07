@@ -1,0 +1,16 @@
+# Ignorar diretórios com emails
+data/emails_html/
+data/emails_json/
+
+# Ignorar cache e arquivos temporários
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Ignorar ambiente virtual e configurações locais
+.venv/
+.env
+
+# Ignorar metadados de controle de versão
+.git/
