@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 import logging
-import streamlit as st
+import pages as st
 
 # Caminho do banco de dados
 DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "sjur_recortes.db"
