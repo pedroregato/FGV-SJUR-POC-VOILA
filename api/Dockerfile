@@ -45,7 +45,8 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Define modo padrão (sobrescrevível via build arg)
-ARG MODE=des
+# ARG MODE=des
+ARG MODE=prod
 ENV MODE=${MODE}
 
 # Comando condicional de execução (desenvolvimento ou produção)

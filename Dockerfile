@@ -31,15 +31,16 @@ EXPOSE 8501
 
 # Define modo padrão (prod) e sobrescrevível
 ARG MODE=prod
+# ARG MODE=des
 ENV MODE=${MODE}
 
 # Entrypoint condicional: usa TLS em prod
 CMD ["sh", "-c", "if [ \"$MODE\" = \"prod\" ]; then \
-  streamlit run analise_dados_sjur.py --server.address=0.0.0.0 \
+  streamlit run menu_sjur_streamlit.py --server.address=0.0.0.0 \
            --server.port=8501 \
            --server.enableCORS=false \
            --server.sslCertFile=/etc/ssl/certs/server.crt \
            --server.sslKeyFile=/etc/ssl/certs/server.key; \
   else \
-  streamlit run analise_dados_sjur.py --server.address=0.0.0.0 --server.port=8501; \
+  streamlit run menu_sjur_streamlit.py --server.address=0.0.0.0 --server.port=8501; \
   fi"]
