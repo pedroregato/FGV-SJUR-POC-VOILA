@@ -21,27 +21,49 @@ DEEPSEEK_MODEL = "deepseek-chat"
 LLM_TIMEOUT = 30  # segundos
 
 DEEPSEEK_PROMPT = """
-Você é um especialista em análise processual com profundo conhecimento da estrutura de documentos jurídicos.
+Você é um especialista em análise processual com profundo conhecimento da estrutura de documentos jurídicos, 
+Linguística, Semântica e Gramática da língua portuguesa.
 Sua tarefa é identificar e classificar as partes processuais seguindo rigorosamente estas regras:
+
+# DEFINIÇÃO:
+Em direito processual, a parte processual refere-se a cada pessoa que está envolvida numa relação jurídica processual, 
+ou seja, numa ação judicial, e que age com parcialidade, defendendo um interesse, 
+seja próprio ou de outrem. A parte pode ser o autor (quem inicia a ação) ou o réu (quem é demandado), ou ainda uma parte auxiliar. 
+
+## SINÔNIMOS DE INTERESSE:
+    - 1 - Sinônimos de autor (considere também os plurais de cada palavra): AUTOR/EXEQUENTE/RECORRENTE/AGRAVANTE/IMPETRANTE/POLO ATIVO/APELANTE
+    - 2 - Sinônimos de réu (considere também os plurais de cada palavra): RÉU/EXECUTADO/RECORRIDO/AGRAVADO/IMPETRADO/POLO PASSIVO/APELADO
+
 
 ## Regras de Classificação:
 
 1. CLASSIFICAÇÃO PRIORITÁRIA:
-   - Quando encontrar padrões como "AUTOR: X" e "REU: Y, Z" no mesmo recorte:
-     * X é sempre o autor principal
-     * Y e Z são sempre réus conjuntos
+   - Quando encontrar padrões como "AUTOR: X1, X2, Xn" e "REU: Y1, Y2, Yn" no mesmo recorte:
+     * X1, X2, Xn são sempre autores conjuntos
+     * Y1, Y2, Yn são sempre réus conjuntos
+     * A quantidade de autores pode variar de 1 até mais de 1 autor
+     * A quantidade de réus pode variar de 1 até mais de 1 réu
      * IGNORE qualquer outra classificação anterior por ordem de menção
+     * Nota: As palavras "AUTOR" E "RÉU" podem estar substituídas por seus respectivos sinônimos.
 
-2. ORDEM DAS PARTES:
+2. CLASSIFICAÇÃO POR ORDEM DAS PARTES:
    Motivação: Esta regra é particularmente útil quando não se consegue deduzir claramente quem é réu e autor no texto.
-   - A PRIMEIRA parte mencionada após "Parte:" é SEMPRE o AUTOR/EXEQUENTE/RECORRENTE
-   - A ÚLTIMA parte mencionada após "Parte:" é SEMPRE o RÉU/EXECUTADO/RECORRIDO
+   - A PRIMEIRA parte mencionada após a palavra "Parte:" é SEMPRE o AUTOR/EXEQUENTE/RECORRENTE
+   - A ÚLTIMA parte mencionada após a palavra "Parte:" é SEMPRE o RÉU/EXECUTADO/RECORRIDO
    - Partes intermediárias devem ser classificadas por VÍNCULO:
-     * Se houver conexão clara com o autor (mesmo grupo econômico, mesma área), classifique como AUTOR
-     * Se houver conexão clara com o réu, classifique como RÉU
+     * Se houver conexão clara com a primeira parte mencionada no texto (mesmo grupo econômico, mesma área, mesma responsabilidade), 
+     classifique como AUTOR
+     * Se houver conexão clara com a última parte mencionada no texto (mesmo grupo econômico, mesma área, mesma responsabilidade), 
+     classifique como RÉU
      * Caso ambíguo, classifique como INTERESSADO
+     
+3. CLASSIFICAÇÃO POR NÚCLEO DO SUJEITO/AGENTE DA AÇÃO
+   - Aplicada quando se conseguir deduzir que uma pessoa física ou jurídica indicada por um nome próprio, 
+   e que não seja explicitamente um agente do Poder Judiciário (Juiz, Desembargador, Advogado, dentre outros) for 
+   um agente da ação proposta pelo texto jurídico.
+ 
 
-3. NORMALIZAÇÃO:
+4. NORMALIZAÇÃO:
    - Remova completamente:
      * Números de OAB (ex: OAB/SP 123456)
      * Números de processo/documentos
@@ -51,24 +73,26 @@ Sua tarefa é identificar e classificar as partes processuais seguindo rigorosam
      * Razões sociais completas de empresas (em MAIÚSCULAS)
      * Órgãos/entidades completos (em MAIÚSCULAS)
 
-4. ADVOGADOS:
+5. ADVOGADOS:
    - Associe cada advogado à parte correspondente pela ORDEM:
      * Advogados listados após o autor são do AUTOR
      * Advogados listados após o réu são do RÉU
    - Remova completamente a OAB e mantenha apenas NOME COMPLETO
 
-5. SAÍDA:
+6. SAÍDA:
    - Gere STRICT JSON válido com:
      * autor: [nomes]
      * reu: [nomes]
      * interessados: [nomes]
      * advogados_autor: [nomes]
      * advogados_reu: [nomes]
+     * justificativa: Justifique em uma frase curta de até 120 caracteres a regra aplicada para a extração das partes.
 
-## Sinônimos
-1. Sinônimos de réu: impetrado, reu, coator, demandado, agravado, executado, ré, recorrido     
-2. Sinônimos de autor: impetrante, requerente, demandante, agravante, exequente, autora, recorrente
-Estas palavras 
+## Palavras chave que dividem o texto:
+   - Algumas palavras são de especial relevância e indicam uma quebra do texto indicando um novo tópico sempre que seguidas 
+   da do sinal de pontuação de dois pontos ":". Alguns exemplos: 
+   - Parte, Conteudo, Apelante, Tipo de Comunicação, Publicação, Sentença, Órgão, Comarca, Tribunal, Juíz, Apelante, Relator, Objeto,
+   Conteúdo, Teor.
 
 ## Exemplo 1:
 Input: 
@@ -81,6 +105,7 @@ Output:
   "interessados": [],
   "advogados_autor": ["JOÃO SILVA", "MARIA SOUZA"],
   "advogados_reu": []
+  "justificativa": "Aplicada a regra 2 - CLASSIFICAÇÃO POR ORDEM DAS PARTES." 
 }
 
 ## Exemplo 2:
@@ -94,11 +119,13 @@ Output:
   "interessados": ["CICLANO SILVA"],
   "advogados_autor": ["CARLOS PEREIRA"],
   "advogados_reu": []
+  "justificativa": "Aplicada a regra 2 - CLASSIFICAÇÃO POR ORDEM DAS PARTES."
 }
 
-## Exemplo 3 (Caso Complexo):
+## Exemplo 3:
 Input:
-"Parte: BANCO DO BRASIL SA Parte: FUNDACAO GETULIO VARGAS Parte: MINISTERIO PUBLICO FEDERAL Advogado: ANA PAULA - OAB/DF 456789 Advogado: PEDRO HENRIQUE - OAB/SP 987654"
+"Parte: BANCO DO BRASIL SA Parte: FUNDACAO GETULIO VARGAS 
+Parte: MINISTERIO PUBLICO FEDERAL Advogado: ANA PAULA - OAB/DF 456789 Advogado: PEDRO HENRIQUE - OAB/SP 987654"
 
 Output:
 {
@@ -107,6 +134,50 @@ Output:
   "interessados": ["FUNDACAO GETULIO VARGAS"],
   "advogados_autor": ["ANA PAULA", "PEDRO HENRIQUE"],
   "advogados_reu": []
+  "justificativa": "Aplicada a regra 2 - CLASSIFICAÇÃO POR ORDEM DAS PARTES."
+}
+
+
+## Exemplo 4:
+Input:
+"Processo 1007695-19.2023.8.26.0604 - Procedimento Comum Civel - Interpretacao / Revisao de Contrato - Eliana Lima de Castro - 
+Viva Vista Solar Empreendimentos Imobiliarios Ltda - Vistos, Trata-se de acao proposta por ELIANA LIMA DE CASTRO em face de VIVA VISTA SOLAR 
+SPE EMPREENDIMENTOS IMOBILIARIOS LTDA, pretendendo a revisao de contrato de compra e venda de imovel, 
+"
+
+Output:
+{
+  "autor": ["ELIANA LIMA DE CASTRO"],
+  "reu": ["VIVA VISTA SOLAR SPE EMPREENDIMENTOS IMOBILIARIOS LTDA"],
+  "interessados": [],
+  "advogados_autor": [],
+  "advogados_reu": []
+  "justificativa": "Aplicada a regra 3. CLASSIFICAÇÃO POR NÚCLEO DO SUJEITO/AGENTE DA AÇÃO"
+}
+
+## Exemplo 5:
+Input:
+"Tipo de comunicacao: Intimacao Meio: Diario de Justica Eletronico Nacional 
+Inteiro teor: https://pje2g.trf3.jus.br:443/pje/Processo/ConsultaDocumento/listView.seam?x=25060914340691100000324278933 
+Parte: MANOEL DOS REIS DE JESUS COUTINHO Advogado: THALYSSA PEREIRA RIBEIRO DO AMARAL - OAB DF-54120 Advogado: JANQUIEL DOS SANTOS - OAB RS-104298 Conteudo: PODER JUDICIARIO Tribunal 
+Regional Federal da 3ª Regiao 4ª Turma APELACAO CIVEL (198) Nº 5006681-61.2023.4.03.6114 RELATOR: Gab. 13 - DES. FED. MONICA NOBRE 
+APELANTE: MANOEL DOS REIS DE JESUS COUTINHO, 
+ORDEM DOS ADVOGADOS DO BRASIL CONSELHO FEDERAL Advogado do(a) APELANTE: THALYSSA PEREIRA RIBEIRO DO AMARAL - DF54120-A 
+Advogado do(a) APELANTE: JANQUIEL DOS SANTOS - RS104298-A 
+APELADO: FUNDACAO GETULIO VARGAS, ORDEM DOS ADVOGADOS DO BRASIL CONSELHO FEDERAL, MANOEL DOS REIS DE JESUS COUTINHO 
+Advogado do(a) APELADO: JANQUIEL DOS SANTOS - RS104298-A 
+Advogado do(a) APELADO: THALYSSA PEREIRA RIBEIRO DO AMARAL - DF54120-A 
+OUTROS PARTICIPANTES: PODER JUDICIARIO Tribunal Regional Federal da 3ª Regiao 4ª Turma APELACAO CIVEL (198) Nº 5006681-61.2023.4.03.6114 
+"
+
+Output:
+{
+  "autor": ["MANOEL DOS REIS DE JESUS COUTINHO"],
+  "reu": ["FUNDACAO GETULIO VARGAS", "ORDEM DOS ADVOGADOS DO BRASIL CONSELHO FEDERAL", "MANOEL DOS REIS DE JESUS COUTINHO"],
+  "interessados": [],
+  "advogados_autor": ["THALYSSA PEREIRA RIBEIRO DO AMARAL"],
+  "advogados_reu": []
+  "justificativa": "Aplicada a regra 3. CLASSIFICAÇÃO POR NÚCLEO DO SUJEITO/AGENTE DA AÇÃO"
 }
 
 Retorne APENAS o JSON válido, sem comentários ou explicações.
@@ -120,6 +191,7 @@ class PartesProcesso:
     interessados: List[str]
     advogados_autor: List[str]
     advogados_reu: List[str]
+    justificativa: Optional[str] = ""
 
     def __post_init__(self):
         """Remove duplicatas, normaliza e filtra entidades vazias."""
@@ -221,7 +293,8 @@ def processar_resposta_llm(resposta: dict) -> Optional[PartesProcesso]:
             reu=dados['reu'],
             interessados=dados['interessados'],
             advogados_autor=dados['advogados_autor'],
-            advogados_reu=dados['advogados_reu']
+            advogados_reu=dados['advogados_reu'],
+            justificativa=dados['justificativa']
         )
     except json.JSONDecodeError:
         logger.error("Resposta do LLM não é um JSON válido")
@@ -268,7 +341,8 @@ def extrair_partes_processo(texto: str) -> PartesProcesso:
             reu=partes.get('reu', []),
             interessados=partes.get('interessados', []),
             advogados_autor=partes.get('advogados_autor', []),
-            advogados_reu=partes.get('advogados_reu', [])
+            advogados_reu=partes.get('advogados_reu', []),
+            justificativa=partes.get('justificativa', "")
         )
     except Exception as e:
         logger.error(f"Erro na extração: {str(e)}")

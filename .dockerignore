@@ -10,7 +10,6 @@ __pycache__/
 
 # Ignorar ambiente virtual e configurações locais
 .venv/
-.env
 
 # Ignorar metadados de controle de versão
 .git/

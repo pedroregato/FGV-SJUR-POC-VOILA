@@ -45,13 +45,16 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Define modo padrão (sobrescrevível via build arg)
-# ARG MODE=des
 ARG MODE=prod
 ENV MODE=${MODE}
 
-# Comando condicional de execução (desenvolvimento ou produção)
+# Entrypoint condicional: usa TLS em prod
 CMD ["sh", "-c", "if [ \"$MODE\" = \"prod\" ]; then \
-  uvicorn api.main:app --host 0.0.0.0 --port 8000 --no-access-log; \
-else \
+  uvicorn api.main:app --host 0.0.0.0 --port 8000 \
+         --ssl-keyfile=/etc/ssl/certs/server.key \
+         --ssl-certfile=/etc/ssl/certs/server.crt \
+         --no-access-log; \
+  else \
   uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload; \
-fi"]
+  fi"]
+
