@@ -1,7 +1,5 @@
 import streamlit as st
 from pathlib import Path
-from PIL import Image
-import base64
 
 # Configuração da página
 st.set_page_config(page_title="SJUR - Menu Principal", layout="centered", page_icon="📘")
@@ -13,55 +11,75 @@ st.markdown("""
     <p style='text-align: center; font-size: 16px;'>Autor: Pedro Gentil</p>
 """, unsafe_allow_html=True)
 
+# Estilo CSS customizado
 st.markdown("""
     <style>
-    .menu-container {
+    .menu-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 2rem;
-        justify-items: center;
-        align-items: center;
-        margin-top: 3rem;
+        margin: 4rem auto;
+        max-width: 800px;
     }
     .menu-item {
-        border: 2px solid #ccc;
-        border-radius: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #1f77b4;
+        color: white;
+        border-radius: 16px;
         padding: 2rem;
-        width: 200px;
         height: 200px;
-        text-align: center;
-        transition: all 0.2s ease-in-out;
+        transition: 0.3s;
     }
     .menu-item:hover {
-        border-color: #1f77b4;
-        box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.2);
+        transform: scale(1.03);
         cursor: pointer;
+        background: #1665a2;
+    }
+    .menu-item.disabled {
+        background: #999;
+        cursor: not-allowed;
     }
     .menu-icon {
-        font-size: 3rem;
+        font-size: 2.5rem;
         margin-bottom: 1rem;
     }
     </style>
 """, unsafe_allow_html=True)
 
-col1, col2 = st.columns(2, gap="large")
+# Caminho relativo para a pasta pages
+PAGES_DIR = "pages"
 
-# Caminhos relativos para os scripts
-SCRIPT_DIR = Path(__file__).resolve().parent
-STREAMLIT_DIR = SCRIPT_DIR / "pages"
+# Cria os elementos do menu
+st.markdown('<div class="menu-grid">', unsafe_allow_html=True)
 
-# --- Funções de navegação ---
-def redirecionar_para(caminho_script: Path):
-    st.switch_page(str(caminho_script.relative_to(SCRIPT_DIR)))
+# Validação (ativo)
+if st.button("", key="val_btn"):
+    st.switch_page(f"{PAGES_DIR}/analise_dados_sjur.py")
 
-# --- Itens do menu ---
-with col1:
-    if st.button("\U0001F50D\nValidação", use_container_width=True):
-        redirecionar_para(STREAMLIT_DIR / "analise_dados_sjur.py")
+st.markdown(f"""
+<div class="menu-item" onclick="document.querySelector('[data-testid=\"stButton\"] button[data-baseweb]').click()">
+    <div class="menu-icon">🔍</div>
+    <div><strong>Validação</strong><br><span style='font-size: 0.9rem;'>Análise dos dados coletados</span></div>
+</div>
+""", unsafe_allow_html=True)
 
-    if st.button("\U0001F50E\nResultados de Interesse", use_container_width=True):
-        st.info("Esta funcionalidade ainda está em desenvolvimento.")
+# Resultados de Interesse (desativado)
+st.markdown("""
+<div class="menu-item disabled">
+    <div class="menu-icon">📊</div>
+    <div><strong>Resultados de Interesse</strong><br><span style='font-size: 0.9rem;'>Em breve</span></div>
+</div>
+""", unsafe_allow_html=True)
 
-with col2:
-    if st.button("\U0001F4CA\nConsulta DataJud", use_container_width=True):
-        st.info("Esta funcionalidade ainda está em desenvolvimento.")
+# Consulta DataJud (desativado)
+st.markdown("""
+<div class="menu-item disabled" style="grid-column: span 2;">
+    <div class="menu-icon">📈</div>
+    <div><strong>Consulta DataJud</strong><br><span style='font-size: 0.9rem;'>Em breve</span></div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)

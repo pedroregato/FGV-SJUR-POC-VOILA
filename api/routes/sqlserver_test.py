@@ -1,15 +1,21 @@
 # api/routes/sqlserver_test.py
 from fastapi import APIRouter
 import pyodbc
+import os
+from dotenv import load_dotenv
+
+
+# Carrega .env apenas uma vez no topo
+load_dotenv()
 
 router = APIRouter()
 
 @router.get("/testar-conexao-sqlserver")
 def testar_conexao_sqlserver():
-    servidor = "SQLDC1VDS0006"
-    banco = "FGV_SOLCORP_SERDON"
-    usuario = "FGV_SOLCORP_SERDON"
-    senha = "w>#t<L$4W#B183D7HLp4Z6P9"
+    servidor = os.getenv("SQLSERVER_SERVER")
+    banco = os.getenv("SQLSERVER_DB")
+    usuario = os.getenv("SQLSERVER_USER")
+    senha = os.getenv("SQLSERVER_PWD")
 
     try:
         conn_str = (

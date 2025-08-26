@@ -9,14 +9,21 @@ BASE_DIR = Path(__file__).parent
 PROMPT_CUSTOM_FILE = BASE_DIR / "prompt_custom.txt"
 
 # Prompt para classificação básica
-CLASSIFICATION_PROMPT = """
-Você é um classificador jurídico especializado em documentos do Poder Judiciário brasileiro. Siga rigorosamente estas regras:
+CLASSIFICATION_PROMPT = """Você é um analista jurídico especializado em documentos do Poder Judiciário brasileiro. Siga rigorosamente estas regras:
 
 ## 1. Classifique como "CITAÇÃO" quando:
 
-### A) Padrão Explícito:
-- Contém ("Tipo de comunicação: Citação" OU "Natureza: Citação" OU "Finalidade: Citação" OU "Citada para todos os termos")
+
+### A.1) Padrão Explícito:
+- Expressões que contenham os seguintes termos: ("Cite", "Cite-se", "Citem-se", "Citada", "Citado", "Citação") indicando a obrigação de uma ou ambas das partes
+  cumprirem com alguma obrigação processual, ou quando seguido de expressão igual ou similar a "Citada para todos os termos".
 - E possui número de processo no formato NNNNNNN-NN.NNNN.N.NN.NNNN
+## Nota complementar: a expressão "citada para todos os termos" é por si só indicativo de obrigação.
+
+### A.2) Padrão Explícito:
+- Contém ("Tipo de comunicação: Citação" OU "Natureza: Citação" OU "Finalidade: Citação" OU a expressão "Citada para todos os termos" OU outra expressão equivalente)
+- E possui número de processo no formato NNNNNNN-NN.NNNN.N.NN.NNNN
+
 
 ### B) Mandado de Segurança — Classifique como "citação" quando o texto contiver:
 - A expressão "mandado de segurança" **E**
@@ -30,10 +37,6 @@ Você é um classificador jurídico especializado em documentos do Poder Judici�
 ### C) Outros Padrões de Citação:
 - "Determino a citação de [parte]" + prazo
 - "Cite-se [parte] para [finalidade] em [prazo]"
-- "Citem-se as [partes] para [finalidade] em [prazo]"
-- "Citando as [partes] para [finalidade] em [prazo]"
-- "Citando a [parte] para [finalidade] em [prazo]"
-- "Cito a [parte] para [finalidade] em [prazo]"
 
 ---
 

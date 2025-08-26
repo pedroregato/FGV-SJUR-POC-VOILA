@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from typing import Optional, Tuple, Literal
-from app.modules.prompts.prompt_definitions import carregar_prompt_custom
+from app.modules.prompts.classification_definitions import carregar_prompt_custom
 import requests
 
 ClassificationLabel = Literal["citação", "intimação", "não previsto"]

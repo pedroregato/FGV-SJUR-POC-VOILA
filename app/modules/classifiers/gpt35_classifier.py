@@ -2,7 +2,7 @@ import re
 import requests
 from dataclasses import dataclass
 from typing import Optional, Tuple
-from app.modules.prompts.prompt_definitions import carregar_prompt_custom
+from app.modules.prompts.classification_definitions import carregar_prompt_custom
 
 @dataclass
 class ClassificationResult:

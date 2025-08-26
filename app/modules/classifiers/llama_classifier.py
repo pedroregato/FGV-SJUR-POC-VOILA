@@ -3,7 +3,7 @@ import re
 from contextlib import redirect_stdout, redirect_stderr
 from dataclasses import dataclass
 from typing import Optional, Tuple, Literal
-from app.modules.prompts.prompt_definitions import carregar_prompt_custom
+from app.modules.prompts.classification_definitions import carregar_prompt_custom
 from llama_cpp import Llama
 
 try:

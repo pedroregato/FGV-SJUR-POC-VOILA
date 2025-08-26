@@ -5,7 +5,7 @@ from .classifiers.gemini_classifier import GeminiLegalClassifier
 from .classifiers.regex_classifier import RegexLegalClassifier, RegexClassificationResult
 # from .classifiers.llama_classifier import LlamaLocalClassifier
 from .utilitarios import inicializar_base_avaliacoes, registrar_avaliacao
-from .prompts.prompt_definitions import carregar_prompt_custom
+from .prompts.classification_definitions import carregar_prompt_custom
 from .search_tokens import (
     highlight_text,
     count_occurrences,
