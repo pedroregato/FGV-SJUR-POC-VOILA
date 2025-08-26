@@ -259,6 +259,47 @@ def cnjs_with_indicios(text: str, lexicon_terms: list[str], window_chars: int) -
     return result
 
 
+def cnjs_com_indicios_positivos(text: str, lexicon_terms: list[str], window_chars: int) -> list[str]:
+    """CNJs cujo contexto ±window_chars contém ao menos 1 termo POSITIVO do léxico."""
+    if not text:
+        return []
+
+    cnj_matches = list(CNJ_RE.finditer(text))
+    if not cnj_matches:
+        return []
+
+    tnorm = normalize_match(text)
+
+    # FILTRAR apenas termos POSITIVOS (peso > 0)
+    positive_terms = [term for term, weight in LEXICON_ARQ_WEIGHTS.items() if weight > 0]
+    positive_terms_norm = [normalize_match(term) for term in positive_terms]
+
+    kw_positions = []
+    for kw_norm in positive_terms_norm:
+        if not kw_norm:
+            continue
+        for m in re.finditer(re.escape(kw_norm), tnorm):
+            kw_positions.append(m.start())
+
+    if not kw_positions:
+        return []
+
+    kept = []
+    for m in cnj_matches:
+        start = m.start()
+        if any(abs(p - start) <= window_chars for p in kw_positions):
+            kept.append(m.group())
+
+    # dedup preservando ordem
+    seen = set()
+    result = []
+    for x in kept:
+        if x not in seen:
+            seen.add(x)
+            result.append(x)
+    return result
+
+
 # ======================
 # Saídas (pastas e arquivos)
 # ======================
@@ -303,8 +344,11 @@ def mailitem_to_record(mail, near_window_chars: int):
     # score / hits
     score, found_terms, hits_str = compute_hits_and_score(subject + "\n" + text)
 
-    # processos (com janela larga)
+    # processos (com janela larga) - TODOS os CNJs
     processos_list = cnjs_with_indicios(text, found_terms, near_window_chars)
+
+    # NOVO: processos apenas com indícios POSITIVOS
+    indicios_list = cnjs_com_indicios_positivos(text, found_terms, near_window_chars)
 
     dt_str = datetime.fromtimestamp(time.mktime(received_time.timetuple())).strftime("%Y-%m-%d_%H%M%S")
     fn_base = f"{dt_str}__{safe_filename(subject)}"
@@ -317,6 +361,7 @@ def mailitem_to_record(mail, near_window_chars: int):
         "sender": sender,
         "processo": None,
         "processos": processos_list,
+        "indicios": indicios_list,
         "orgao": None,
         "data_disponibilizacao": None,
         "tipo_comunicacao": None,
@@ -500,8 +545,12 @@ def generate_csv_from_jsonl(jsonl_path: str, csv_path: str, out_base: str, near_
             found_terms = [h.split(":", 1)[-1] for h in hits.split(",") if ":" in h]
 
         processos = o.get("processos") or []
+        indicios = o.get("indicios") or []
+
         if not processos:
             processos = cnjs_with_indicios(text, found_terms, near_window_chars)
+        if not indicios:
+            indicios = cnjs_com_indicios_positivos(text, found_terms, near_window_chars)
 
         entry_id = o.get("entry_id") or ""
         received = o.get("received") or ""
@@ -516,6 +565,7 @@ def generate_csv_from_jsonl(jsonl_path: str, csv_path: str, out_base: str, near_
             "hits": hits or "",
             "subject": subject,
             "processos": "; ".join(processos) if isinstance(processos, list) else str(processos),
+            "indicios": "; ".join(indicios) if isinstance(indicios, list) else str(indicios),
             "entry_id": entry_id,
             "html_file": html_file,
             "html_filename": html_base,
@@ -528,7 +578,7 @@ def generate_csv_from_jsonl(jsonl_path: str, csv_path: str, out_base: str, near_
     with open(csv_path, "w", encoding="utf-8", newline="") as w:
         writer = csv.DictWriter(w, fieldnames=[
             "received", "score", "is_arquivamento", "hits", "subject",
-            "processos", "entry_id", "html_file", "html_filename"
+            "processos", "indicios", "entry_id", "html_file", "html_filename"
         ], delimiter=";")
         writer.writeheader()
         writer.writerows(out_rows)
