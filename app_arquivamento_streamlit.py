@@ -1,5 +1,5 @@
 # app_arquivamento_streamlit.py
-# (Versão com INDENTAÇÃO CORRIGIDA para o botão de exportação)
+# (Versão com lógica de visualização corrigida)
 from __future__ import annotations
 from pathlib import Path
 import json
@@ -30,7 +30,7 @@ st.title("📄 Scanner de Indícios de Arquivamento — SJUR")
 _logging.getLogger("streamlit.runtime.caching.hashing").setLevel(_logging.ERROR)
 
 # -----------------------------------------------------------------------------
-# Sidebar - Parte 1: Carregamento de Arquivos
+# Sidebar - Carregamento de Arquivos
 # -----------------------------------------------------------------------------
 st.sidebar.title("Fonte de Dados")
 default_csv = st.sidebar.text_input("Caminho do CSV", value="outputs/arquivamento.csv")
@@ -58,11 +58,22 @@ def load_df_from_source(source):
     df_["score"] = pd.to_numeric(df_["score"], errors="coerce").fillna(0).astype(int)
     df_["is_arquivamento_flag"] = (df_["is_arquivamento"].astype(str).str.strip() == "1").astype(int)
     df_["received_dt"] = pd.to_datetime(df_["received"], format="%Y-%m-%d_%H%M%S", errors="coerce")
+
     if "hits" in df_.columns:
         df_["hits_norm"] = df_["hits"].fillna("").apply(
             lambda x: [h.split(":", 1)[-1] for h in x.split(",") if ":" in h])
     else:
         df_["hits_norm"] = [[] for _ in range(len(df_))]
+
+    if "processed_publications" in df_.columns:
+        def safe_literal_eval(val):
+            try:
+                return ast.literal_eval(val)
+            except (ValueError, SyntaxError, TypeError):
+                return []
+
+        df_["processed_publications"] = df_["processed_publications"].fillna("[]").apply(safe_literal_eval)
+
     return df_
 
 
@@ -175,7 +186,7 @@ with tab_res:
     for col in ["processos", "indicios", "hits"]:
         if col in view_df.columns:
             view_df[col] = view_df[col].fillna('').apply(
-                lambda x: f'<div class="scrollable-cell">{html.escape(x).replace(";", "").replace(", ", "")}</div>')
+                lambda x: f'<div class="scrollable-cell">{html.escape(x).replace("; ", "").replace(", ", "")}</div>')
 
 
     def build_link(row):
@@ -187,80 +198,111 @@ with tab_res:
 
     st.markdown(view_df.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-# --- INÍCIO DO BLOCO COM INDENTAÇÃO CORRIGIDA ---
+# --- Bloco de Ações na Sidebar ---
 st.sidebar.divider()
 st.sidebar.title("Ações")
 
-# A lógica do botão de exportação agora está no nível de indentação correto
 if st.sidebar.button("Exportar Processos com Indícios (Excel)"):
-    # 1. Usar o DataFrame JÁ FILTRADO na tela (fdf)
     indicios_df = fdf[fdf['indicios'].notna() & (fdf['indicios'] != '')].copy()
 
     if indicios_df.empty:
         st.sidebar.warning("Nenhum processo com indício encontrado nos dados filtrados.")
     else:
-        # 2. Extrair e achatar a lista de processos
-        all_indicios = []
+        export_data = []
         for index, row in indicios_df.iterrows():
-            # A coluna 'indicios' é uma string separada por '; '
-            processos = [p.strip() for p in row['indicios'].split(';') if p.strip()]
-            all_indicios.extend(processos)
+            processos_com_indicio = [p.strip() for p in row['indicios'].split(';') if p.strip()]
+            for processo in processos_com_indicio:
+                export_data.append({
+                    "Processo com Indício": processo,
+                    "Recorte (Assunto)": row.get('subject', ''),
+                    "Data do Recorte": row.get('received', ''),
+                    "Score do Recorte": row.get('score', 0),
+                    "Hits no Recorte": row.get('hits', '').replace(',', ', ')
+                })
 
-        # 3. Remover duplicatas e criar um DataFrame final para exportação
-        unique_indicios = sorted(list(set(all_indicios)))
-        export_df = pd.DataFrame(unique_indicios, columns=["Processo com Indício"])
-
-        # 4. Gerar o arquivo Excel em memória
+        export_df = pd.DataFrame(export_data)
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             export_df.to_excel(writer, index=False, sheet_name='Processos com Indicios')
-            writer.sheets['Processos com Indicios'].set_column('A:A', 30)
+            worksheet = writer.sheets['Processos com Indicios']
+            worksheet.set_column('A:A', 30)
+            worksheet.set_column('B:B', 50)
+            worksheet.set_column('C:C', 20)
+            worksheet.set_column('D:D', 10)
+            worksheet.set_column('E:E', 50)
 
         processed_data = output.getvalue()
-
-        # 5. Criar o botão de download na sidebar
         st.sidebar.download_button(
-            label="⬇️ Baixar Excel",
+            label="⬇️ Baixar Relatório Excel",
             data=processed_data,
-            file_name="processos_com_indicios_de_arquivamento.xlsx",
+            file_name="relatorio_indicios_de_arquivamento.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        st.sidebar.success(f"{len(unique_indicios)} processos exportados!")
-# --- FIM DO BLOCO COM INDENTAÇÃO CORRIGIDA ---
+        st.sidebar.success(f"{len(export_df)} ocorrências exportadas!")
 
-
+# --- Aba de Visualização ---
 with tab_view:
     st.subheader("Visualização do Recorte com Destaques")
-    st.caption("Destaques: 🔴 CNJs com indício | 🟡 Hits de arquivamento | 🟢 FGV | 🔵 Prazos/Intimações")
+
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        st.caption("Destaques: 🔴 CNJs com indício | 🟡 Hits de arquivamento | 🟢 FGV | 🔵 Prazos/Intimações")
+    with c2:
+        filter_pubs = st.checkbox("Mostrar apenas publicações com indícios", value=False)
 
     viewrow_id = _get_query_param("viewrow")
-    row = None
+    row_to_display = None
+
     if viewrow_id:
         row_match = df[df["entry_id"] == viewrow_id]
         if not row_match.empty:
-            row = row_match.iloc[0]
+            row_to_display = row_match.iloc[0]
     elif not fdf.empty:
-        row = fdf.iloc[0]
+        row_to_display = fdf.iloc[0]
 
-    if row is not None:
-        html_path = Path(html_dir) / row["html_filename"]
-        if html_path.exists():
-            html_content = html_path.read_text(encoding="utf-8", errors="ignore")
+    if row_to_display is not None:
+        html_content_to_render = ""
 
-            processos_list = [p.strip() for p in row.get('processos', '').split('; ') if p.strip()]
-            indicios_list = [p.strip() for p in row.get('indicios', '').split('; ') if p.strip()]
+        # Prioridade 1: Usar a coluna 'processed_publications' se existir
+        if "processed_publications" in row_to_display and isinstance(row_to_display["processed_publications"], list) and \
+                row_to_display["processed_publications"]:
+            pubs_data = row_to_display["processed_publications"]
+
+            if filter_pubs:
+                pubs_to_show = [pub['html'] for pub in pubs_data if pub.get('score', 0) > 0]
+            else:
+                pubs_to_show = [pub['html'] for pub in pubs_data]
+
+            if not pubs_to_show:
+                if filter_pubs:
+                    st.info("Nenhuma publicação com indícios positivos encontrada neste recorte.")
+                # Se não houver publicações, html_content_to_render permanece vazio
+            else:
+                html_content_to_render = "<hr style='border-top: 2px dashed #ccc; margin: 20px 0;'>".join(pubs_to_show)
+
+        # Prioridade 2 (Fallback): Se a coluna não existir, carregar do arquivo HTML
+        else:
+            html_path = Path(html_dir) / row_to_display["html_filename"]
+            if html_path.exists():
+                html_content_to_render = html_path.read_text(encoding="utf-8", errors="ignore")
+            else:
+                st.error(f"Arquivo HTML não encontrado: {html_path}")
+
+        # Renderiza o conteúdo se ele foi preparado
+        if html_content_to_render:
+            processos_list = [p.strip() for p in row_to_display.get('processos', '').split('; ') if p.strip()]
+            indicios_list = [p.strip() for p in row_to_display.get('indicios', '').split('; ') if p.strip()]
 
             highlighted_html = highlight_keywords_in_html(
-                html_content,
-                row["hits_norm"],
+                html_content_to_render,
+                row_to_display["hits_norm"],
                 processos_list,
                 indicios_list
             )
             components.html(highlighted_html, height=700, scrolling=True)
-        else:
-            st.error(f"Arquivo HTML não encontrado: {html_path}")
+
     else:
-        st.info("Selecione um recorte na aba 'Resultados' para visualizar.")
+        st.info("Selecione um recorte na aba 'Resultados' para visualizar ou limpe os filtros.")
 
 with tab_doc:
     st.markdown("""

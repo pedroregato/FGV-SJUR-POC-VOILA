@@ -178,25 +178,32 @@ def process_publication(pub_html: str) -> Dict:
     }
 
 
-def mailitem_to_record(mail) -> Dict:
+# Dentro de coletar_emails_para_outputs.py
+
+def mailitem_to_record(mail) -> dict:
     """
     Processa um e-mail (recorte), analisando cada publicação individualmente
     e agregando os resultados.
     """
-    subject = mail.Subject or ""
-    sender = getattr(getattr(mail, "Sender", None), "Address", None) or getattr(mail, "SenderEmailAddress", "")
-    received_time = mail.ReceivedTime
-    entry_id = mail.EntryID
+    # ... (código existente para extrair subject, sender, etc.)
     html = getattr(mail, "HTMLBody", "") or ""
 
+    # 1. Divide o recorte em publicações
     publications_html = split_html_into_publications(html)
 
-    processed_pubs = [process_publication(pub_html) for pub_html in publications_html]
+    # 2. Processa cada publicação
+    processed_pubs = []
+    for pub_html in publications_html:
+        # A função process_publication já retorna um dict com score, hits, etc.
+        pub_data = process_publication(pub_html)
+        pub_data['html'] = pub_html  # Adiciona o HTML da publicação ao seu dict
+        processed_pubs.append(pub_data)
 
+    # 3. Agrega os resultados (lógica existente)
     total_score = 0
-    all_cnjs: Set[str] = set()
-    all_cnjs_with_indication: Set[str] = set()
-    all_hits: Set[str] = set()
+    all_cnjs = set()
+    all_cnjs_with_indication = set()
+    all_hits = set()
 
     for pub_data in processed_pubs:
         total_score += pub_data["score"]
@@ -205,23 +212,23 @@ def mailitem_to_record(mail) -> Dict:
         all_hits.update(pub_data["hits"])
 
     hits_str = ",".join(f"{LEXICON_ARQ_WEIGHTS[term]:+d}:{term}" for term in sorted(list(all_hits)))
-
-    dt_str = datetime.fromtimestamp(time.mktime(received_time.timetuple())).strftime("%Y-%m-%d_%H%M%S")
-    fn_base = f"{dt_str}__{safe_filename(subject)}"
+    dt_str = datetime.fromtimestamp(time.mktime(mail.ReceivedTime.timetuple())).strftime("%Y-%m-%d_%H%M%S")
+    fn_base = f"{dt_str}__{safe_filename(mail.Subject or '')}"
 
     return {
-        "entry_id": entry_id,
+        "entry_id": mail.EntryID,
         "received": dt_str,
-        "subject": subject,
-        "sender": sender,
+        "subject": mail.Subject or "",
+        "sender": getattr(getattr(mail, "Sender", None), "Address", None) or getattr(mail, "SenderEmailAddress", ""),
         "processos": sorted(list(all_cnjs)),
         "indicios": sorted(list(all_cnjs_with_indication)),
         "html_original": html,
         "score": int(total_score),
         "hits": hits_str,
         "html_filename": fn_base + ".html",
+        # <--- ALTERAÇÃO: Adicionar a lista de publicações processadas
+        "processed_publications": processed_pubs
     }
-
 
 # =============================================================================
 # Funções de Coleta e Geração de Arquivos
