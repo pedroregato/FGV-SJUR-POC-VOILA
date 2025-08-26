@@ -180,36 +180,81 @@ def process_publication(pub_html: str) -> Dict:
 
 # Dentro de coletar_emails_para_outputs.py
 
+# Adicione esta nova função ao seu script, junto com as outras funções de processamento.
+
+def enrich_html_with_metadata(original_html: str, processed_pubs: List[Dict]) -> str:
+    """
+    Modifica o HTML original para adicionar IDs e atributos de dados a cada tabela de publicação.
+    Isso permite que o frontend (Streamlit) identifique e manipule cada publicação individualmente.
+    """
+    if not original_html or not processed_pubs or not HAS_BS4:
+        return original_html
+
+    soup = BeautifulSoup(original_html, 'html.parser')
+
+    # Encontra todas as tabelas no documento. Precisamos ser cuidadosos para mapear
+    # as tabelas corretas para as publicações processadas.
+    # A heurística original de 'split_html_into_publications' é a chave.
+    publication_tags = soup.find_all("strong", string=re.compile(r"Publicação:"))
+    if not publication_tags:
+        publication_tags = soup.find_all("td", string=re.compile("Publicação:"))
+
+    publication_tables = set()
+    for tag in publication_tags:
+        parent_table = tag.find_parent('table')
+        if parent_table:
+            publication_tables.add(parent_table)
+
+    # Se a estrutura for diferente e não encontrarmos tabelas assim, não fazemos nada.
+    if not publication_tables or len(publication_tables) != len(processed_pubs):
+        # Se o número de tabelas encontradas não bate com o número de publicações processadas,
+        # é mais seguro não modificar o HTML para evitar erros de mapeamento.
+        logging.warning(
+            "Não foi possível mapear publicações para tabelas no HTML. A filtragem visual pode não funcionar.")
+        return original_html
+
+    # Mapeia as tabelas encontradas para os dados processados.
+    # A ordem pode não ser garantida, então isso é uma aproximação.
+    # Para uma solução 100% robusta, o ideal seria que o split e o enrich usassem a mesma lógica.
+    for i, table in enumerate(list(publication_tables)):
+        # Pega os dados da publicação correspondente
+        pub_data = processed_pubs[i]
+
+        # Define o ID e o atributo de dados
+        table['id'] = f"pub_{i}"
+
+        # O atributo 'data-has-indication' será 'true' ou 'false'
+        # Usamos strings, pois é o padrão para atributos de dados HTML.
+        has_indication = "true" if pub_data.get("cnjs_with_indication") else "false"
+        table['data-has-indication'] = has_indication
+
+    return str(soup)
+
+
+# Agora, modifique a função mailitem_to_record para chamar esta nova função.
+
 def mailitem_to_record(mail) -> dict:
     """
     Processa um e-mail (recorte), analisando cada publicação individualmente
-    e agregando os resultados.
+    e enriquecendo o HTML original com metadados para o frontend.
     """
-    # ... (código existente para extrair subject, sender, etc.)
-    html = getattr(mail, "HTMLBody", "") or ""
+    html_original = getattr(mail, "HTMLBody", "") or ""
 
     # 1. Divide o recorte em publicações
-    publications_html = split_html_into_publications(html)
+    publications_html = split_html_into_publications(html_original)
 
-    # 2. Processa cada publicação
-    processed_pubs = []
-    for pub_html in publications_html:
-        # A função process_publication já retorna um dict com score, hits, etc.
-        pub_data = process_publication(pub_html)
-        pub_data['html'] = pub_html  # Adiciona o HTML da publicação ao seu dict
-        processed_pubs.append(pub_data)
+    # 2. Processa cada publicação para obter os dados (score, indicios, etc.)
+    processed_pubs = [process_publication(pub_html) for pub_html in publications_html]
 
-    # 3. Agrega os resultados (lógica existente)
-    total_score = 0
-    all_cnjs = set()
-    all_cnjs_with_indication = set()
-    all_hits = set()
+    # >>> NOVA ETAPA CRÍTICA <<<
+    # 3. Enriquece o HTML original com os metadados das publicações processadas
+    html_enriquecido = enrich_html_with_metadata(html_original, processed_pubs)
 
-    for pub_data in processed_pubs:
-        total_score += pub_data["score"]
-        all_cnjs.update(pub_data["cnjs"])
-        all_cnjs_with_indication.update(pub_data["cnjs_with_indication"])
-        all_hits.update(pub_data["hits"])
+    # 4. Agrega os resultados para o registro geral do e-mail
+    total_score = sum(p["score"] for p in processed_pubs)
+    all_cnjs = set(c for p in processed_pubs for c in p["cnjs"])
+    all_cnjs_with_indication = set(c for p in processed_pubs for c in p["cnjs_with_indication"])
+    all_hits = set(h for p in processed_pubs for h in p["hits"])
 
     hits_str = ",".join(f"{LEXICON_ARQ_WEIGHTS[term]:+d}:{term}" for term in sorted(list(all_hits)))
     dt_str = datetime.fromtimestamp(time.mktime(mail.ReceivedTime.timetuple())).strftime("%Y-%m-%d_%H%M%S")
@@ -222,13 +267,13 @@ def mailitem_to_record(mail) -> dict:
         "sender": getattr(getattr(mail, "Sender", None), "Address", None) or getattr(mail, "SenderEmailAddress", ""),
         "processos": sorted(list(all_cnjs)),
         "indicios": sorted(list(all_cnjs_with_indication)),
-        "html_original": html,
+        "html_original": html_enriquecido,  # <-- IMPORTANTE: Salvar o HTML modificado!
         "score": int(total_score),
         "hits": hits_str,
         "html_filename": fn_base + ".html",
-        # <--- ALTERAÇÃO: Adicionar a lista de publicações processadas
         "processed_publications": processed_pubs
     }
+
 
 # =============================================================================
 # Funções de Coleta e Geração de Arquivos
@@ -346,18 +391,26 @@ def generate_csv_from_jsonl(jsonl_path: str, csv_path: str):
                 logging.warning(f"Linha JSON inválida ou com dados faltantes ignorada (linha {i + 1}): {e}")
                 continue
 
-    out_rows.sort(key=lambda r: (r["score"], r["received"]), reverse=True)
+        # Dentro de coletar_emails_para_outputs.py -> generate_csv_from_jsonl
 
-    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-    fieldnames = ["received", "score", "is_arquivamento", "hits", "subject",
-                  "processos", "indicios", "entry_id", "html_file", "html_filename"]
-    with open(csv_path, "w", encoding="utf-8", newline="") as w:
-        writer = csv.DictWriter(w, fieldnames=fieldnames, delimiter=";")
-        writer.writeheader()
-        writer.writerows(out_rows)
+        out_rows.sort(key=lambda r: (r["score"], r["received"]), reverse=True)
 
-    logging.info("CSV gerado em: %s (linhas: %d)", csv_path, len(out_rows))
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
+        # <--- ALTERAÇÃO: Adicionar a nova coluna à lista de campos do CSV
+        fieldnames = ["received", "score", "is_arquivamento", "hits", "subject",
+                      "processos", "indicios", "entry_id", "html_file", "html_filename",
+                      "processed_publications"]  # <--- ADICIONE ESTA LINHA
+
+        with open(csv_path, "w", encoding="utf-8", newline="") as w:
+            writer = csv.DictWriter(w, fieldnames=fieldnames, delimiter=";")
+            writer.writeheader()
+            writer.writerows(out_rows)
+
+        logging.info("CSV gerado em: %s (linhas: %d)", csv_path, len(out_rows))
+
+
+# Adicione esta nova função ao seu script, junto com as outras funções de processamento.
 
 def main():
     p = argparse.ArgumentParser(description="Coletor de e-mails do Outlook para análise de arquivamento.")

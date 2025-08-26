@@ -1,5 +1,5 @@
 # app_arquivamento_streamlit.py
-# (Versão com lógica de visualização corrigida)
+# (Versão com lógica de visualização corrigida e ajustada)
 from __future__ import annotations
 from pathlib import Path
 import json
@@ -42,11 +42,18 @@ uploaded = st.sidebar.file_uploader("...ou carregue um CSV (separador ';')", typ
 # Query params helpers
 # -----------------------------------------------------------------------------
 def _get_query_param(key: str, default=None):
-    return st.query_params.get(key, default)
+    # A versão mais recente do Streamlit usa st.query_params diretamente
+    if hasattr(st, 'query_params'):
+        return st.query_params.get(key, default)
+    # Fallback para versões mais antigas
+    return st.experimental_get_query_params().get(key, [default])[0]
 
 
 def _set_query_params(**kwargs):
-    st.query_params.update(kwargs)
+    if hasattr(st, 'query_params'):
+        st.query_params.update(kwargs)
+    else:
+        st.experimental_set_query_params(**kwargs)
 
 
 # -----------------------------------------------------------------------------
@@ -61,18 +68,9 @@ def load_df_from_source(source):
 
     if "hits" in df_.columns:
         df_["hits_norm"] = df_["hits"].fillna("").apply(
-            lambda x: [h.split(":", 1)[-1] for h in x.split(",") if ":" in h])
+            lambda x: sorted(list(set([h.split(":", 1)[-1] for h in x.split(",") if ":" in h]))))
     else:
         df_["hits_norm"] = [[] for _ in range(len(df_))]
-
-    if "processed_publications" in df_.columns:
-        def safe_literal_eval(val):
-            try:
-                return ast.literal_eval(val)
-            except (ValueError, SyntaxError, TypeError):
-                return []
-
-        df_["processed_publications"] = df_["processed_publications"].fillna("[]").apply(safe_literal_eval)
 
     return df_
 
@@ -86,6 +84,7 @@ def highlight_keywords_in_html(html_content: str, hits_seq, processos_seq, indic
 
     soup = BeautifulSoup(html_content, "html.parser")
 
+    # O estilo base para os destaques
     style = """
     <style>
       mark.sjur-hit { background: #ffeb3b !important; padding: 0 .2em !important; border-radius: 3px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important; color: #000 !important; font-weight: bold !important; border: 1px solid #ffc107 !important; }
@@ -96,11 +95,14 @@ def highlight_keywords_in_html(html_content: str, hits_seq, processos_seq, indic
       body, div, p, span, td, tr, table, li, ul, ol { background: white !important; color: #333 !important; }
     </style>
     """
+
+    # Injeta o estilo no <head> do HTML, se existir, ou no início.
     if soup.head:
         soup.head.insert(0, BeautifulSoup(style, "html.parser"))
     else:
         soup.insert(0, BeautifulSoup(style, "html.parser"))
 
+    # Compila as regex para os destaques
     re_hits = re.compile(r'(' + '|'.join(re.escape(term) for term in hits_seq if term) + r')',
                          re.IGNORECASE) if hits_seq else None
     re_cnjs = re.compile(
@@ -110,19 +112,23 @@ def highlight_keywords_in_html(html_content: str, hits_seq, processos_seq, indic
     re_fgv = re.compile(r'\b(funda[cç][aã]o getulio vargas|fgv)\b', re.IGNORECASE)
     re_prazo = re.compile(r'\b(prazo|termo|dilig[êe]ncia|intima[cç][aã]o|ci[êe]ncia|cita[cç][aã]o)\b', re.IGNORECASE)
 
+    # Itera sobre todos os nós de texto para aplicar os destaques
     for text_node in soup.find_all(string=True):
         if text_node.parent.name in ['style', 'script', 'head', 'title']:
             continue
 
         text = str(text_node)
+        # Usa uma variável temporária para acumular as substituições
         new_html = text
 
+        # Aplica as substituições em uma ordem de prioridade
         if re_fgv: new_html = re_fgv.sub(r'<mark class="sjur-fgv">\1</mark>', new_html)
         if re_prazo: new_html = re_prazo.sub(r'<mark class="sjur-prazo">\1</mark>', new_html)
         if re_hits: new_html = re_hits.sub(r'<mark class="sjur-hit">\1</mark>', new_html)
         if re_cnjs: new_html = re_cnjs.sub(r'<mark class="sjur-cnj">\1</mark>', new_html)
         if re_indicios: new_html = re_indicios.sub(r'<mark class="sjur-indicio">\1</mark>', new_html)
 
+        # Se o texto foi modificado, substitui o nó original pelo novo HTML
         if new_html != text:
             text_node.replace_with(BeautifulSoup(new_html, "html.parser"))
 
@@ -169,7 +175,8 @@ with tab_res:
 
     sort_col = _get_query_param("sort", "score")
     sort_order = _get_query_param("order", "desc")
-    fdf = fdf.sort_values(by=sort_col, ascending=(sort_order == "asc"))
+    if sort_col in fdf.columns:
+        fdf = fdf.sort_values(by=sort_col, ascending=(sort_order == "asc"))
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Total de Recortes", len(df))
@@ -194,7 +201,8 @@ with tab_res:
         return f'<a href="?{urllib.parse.urlencode(params)}" target="_self">abrir</a>'
 
 
-    view_df["🔗 Ver HTML"] = fdf.apply(build_link, axis=1)
+    if "entry_id" in fdf.columns:
+        view_df["🔗 Ver HTML"] = fdf.apply(build_link, axis=1)
 
     st.markdown(view_df.to_html(escape=False, index=False), unsafe_allow_html=True)
 
@@ -248,7 +256,9 @@ with tab_view:
     with c1:
         st.caption("Destaques: 🔴 CNJs com indício | 🟡 Hits de arquivamento | 🟢 FGV | 🔵 Prazos/Intimações")
     with c2:
-        filter_pubs = st.checkbox("Mostrar apenas publicações com indícios", value=False)
+        ### ALTERAÇÃO ###
+        # O checkbox agora controla a lógica de CSS
+        filter_pubs = st.checkbox("Mostrar apenas publicações com indícios", value=False, key="filter_pubs_checkbox")
 
     viewrow_id = _get_query_param("viewrow")
     row_to_display = None
@@ -258,40 +268,21 @@ with tab_view:
         if not row_match.empty:
             row_to_display = row_match.iloc[0]
     elif not fdf.empty:
+        # Mostra o primeiro item da lista filtrada por padrão
         row_to_display = fdf.iloc[0]
 
     if row_to_display is not None:
-        html_content_to_render = ""
+        ### ALTERAÇÃO ###
+        # Simplificação da lógica de renderização.
+        # Carregamos o HTML do arquivo, que já deve estar enriquecido pelo coletor.
 
-        # Prioridade 1: Usar a coluna 'processed_publications' se existir
-        if "processed_publications" in row_to_display and isinstance(row_to_display["processed_publications"], list) and \
-                row_to_display["processed_publications"]:
-            pubs_data = row_to_display["processed_publications"]
+        html_path = Path(html_dir) / row_to_display["html_filename"]
+        if html_path.exists():
+            html_content_to_render = html_path.read_text(encoding="utf-8", errors="ignore")
 
-            if filter_pubs:
-                pubs_to_show = [pub['html'] for pub in pubs_data if pub.get('score', 0) > 0]
-            else:
-                pubs_to_show = [pub['html'] for pub in pubs_data]
-
-            if not pubs_to_show:
-                if filter_pubs:
-                    st.info("Nenhuma publicação com indícios positivos encontrada neste recorte.")
-                # Se não houver publicações, html_content_to_render permanece vazio
-            else:
-                html_content_to_render = "<hr style='border-top: 2px dashed #ccc; margin: 20px 0;'>".join(pubs_to_show)
-
-        # Prioridade 2 (Fallback): Se a coluna não existir, carregar do arquivo HTML
-        else:
-            html_path = Path(html_dir) / row_to_display["html_filename"]
-            if html_path.exists():
-                html_content_to_render = html_path.read_text(encoding="utf-8", errors="ignore")
-            else:
-                st.error(f"Arquivo HTML não encontrado: {html_path}")
-
-        # Renderiza o conteúdo se ele foi preparado
-        if html_content_to_render:
-            processos_list = [p.strip() for p in row_to_display.get('processos', '').split('; ') if p.strip()]
-            indicios_list = [p.strip() for p in row_to_display.get('indicios', '').split('; ') if p.strip()]
+            # Aplica os destaques de palavras-chave
+            processos_list = [p.strip() for p in row_to_display.get('processos', '').split(';') if p.strip()]
+            indicios_list = [p.strip() for p in row_to_display.get('indicios', '').split(';') if p.strip()]
 
             highlighted_html = highlight_keywords_in_html(
                 html_content_to_render,
@@ -299,7 +290,25 @@ with tab_view:
                 processos_list,
                 indicios_list
             )
-            components.html(highlighted_html, height=700, scrolling=True)
+
+            # Injeta o CSS para a filtragem visual se o checkbox estiver marcado
+            css_filter = ""
+            if filter_pubs:
+                css_filter = """
+                <style>
+                  /* Oculta as tabelas que foram marcadas como sem indícios pelo coletor */
+                  table[data-has-indication="false"] {
+                      display: none !important;
+                      border: 2px dashed red !important; /* Apenas para depuração, pode remover */
+                  }
+                </style>
+                """
+
+            final_html = css_filter + highlighted_html
+            components.html(final_html, height=700, scrolling=True)
+
+        else:
+            st.error(f"Arquivo HTML não encontrado: {html_path}")
 
     else:
         st.info("Selecione um recorte na aba 'Resultados' para visualizar ou limpe os filtros.")
@@ -315,6 +324,7 @@ with tab_doc:
         - 🟡 **Hits de Arquivamento**: Os termos do léxico que geraram o score.
         - 🟢 **FGV**: Menções à Fundação Getúlio Vargas.
         - 🔵 **Prazos/Intimações**: Termos relacionados a prazos processuais.
+    - **Filtragem Visual**: Na aba "Visualização", o checkbox "Mostrar apenas publicações com indícios" oculta dinamicamente as publicações que não contêm termos de arquivamento, facilitando a análise.
 
     ### Explicação das Colunas
     - **score**: Soma dos scores de cada publicação individual dentro do recorte.
