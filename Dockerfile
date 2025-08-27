@@ -1,3 +1,5 @@
+# Dockerfile para teste com dados fixos
+
 # Etapa base
 FROM python:3.11-slim
 
@@ -10,16 +12,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Diretório de trabalho no container
 WORKDIR /app
 
-# Copia todos os arquivos (exceto os listados em .dockerignore)
+# Copia todos os arquivos da aplicação
 COPY . /app
 
-# Copia explicitamente o banco de dados (redundante, mas seguro)
-COPY data/sjur_recortes.db /app/data/sjur_recortes.db
+# =================================================================================
+# ### ALTERAÇÃO PARA TESTE ###
+# Copia a pasta 'outputs' para dentro da imagem.
+# Isso "congela" os dados para o teste de deploy.
+# Certifique-se de que a pasta 'outputs' existe no contexto do build.
+# =================================================================================
+COPY outputs/ /app/outputs/
 
 # Instala dependências do sistema
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libglib2.0-0 libsm6 libxrender1 libxext6 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Instala dependências Python
@@ -29,18 +35,18 @@ RUN pip install -r requirements.txt
 # Expondo a porta usada pelo Streamlit
 EXPOSE 8501
 
-# Define modo padrão (prod) e sobrescrevível
-# ARG MODE=prod
+# Define modo padrão (desenvolvimento) e permite que seja sobrescrito
 ARG MODE=des
 ENV MODE=${MODE}
 
 # Entrypoint condicional: usa TLS em prod
+# >>> Garanta que o nome do script está correto aqui <<<
 CMD ["sh", "-c", "if [ \"$MODE\" = \"prod\" ]; then \
-  streamlit run menu_sjur_streamlit.py --server.address=0.0.0.0 \
+  streamlit run app_arquivamento_streamlit.py --server.address=0.0.0.0 \
            --server.port=8501 \
            --server.enableCORS=false \
            --server.sslCertFile=/etc/ssl/certs/server.crt \
            --server.sslKeyFile=/etc/ssl/certs/server.key; \
   else \
-  streamlit run menu_sjur_streamlit.py --server.address=0.0.0.0 --server.port=8501; \
+  streamlit run app_arquivamento_streamlit.py --server.address=0.0.0.0 --server.port=8501; \
   fi"]
