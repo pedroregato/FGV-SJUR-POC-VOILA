@@ -7,8 +7,8 @@ __pycache__/
 *.so
 
 # Html and Json extensions
-*.html
-*.json
+# *.html
+# *.json
 
 # Distribution / packaging
 .Python
@@ -20,7 +20,6 @@ eggs/
 .eggs/
 lib/
 lib64/
-outputs/
 parts/
 sdist/
 var/
@@ -30,6 +29,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+app/llama.cpp
+scripts/data
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -110,7 +111,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
