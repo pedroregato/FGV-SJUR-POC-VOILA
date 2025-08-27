@@ -36,7 +36,7 @@ RUN pip install -r requirements.txt
 EXPOSE 8501
 
 # Define modo padrão (desenvolvimento) e permite que seja sobrescrito
-ARG MODE=des
+ARG MODE=prod
 ENV MODE=${MODE}
 
 # Entrypoint condicional: usa TLS em prod
