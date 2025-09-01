@@ -1,0 +1,77 @@
+{
+  "cnj": {
+    "pattern": "\\b\\d{7}-\\d{2}\\.\\d{4}\\.\\d{1}\\.\\d{2}\\.\\d{4}\\b",
+    "type": "cnj",
+    "description": "Número CNJ"
+  },
+  "arq_direto": {
+    "description": "Comando Direto de Arquivamento (sem 'baixa')",
+    "pattern": "\\b(arquivem?-se|arquive-se)\\b",
+    "type": "basic"
+  },
+  "baixa_distribuicao": {
+    "description": "Baixa na Distribuição",
+    "pattern": "\\b(?:baixa\\s+na\\s+distribuição|dando[-\\s]se\\s+baixa\\s+na\\s+distribuição)\\b",
+    "type": "basic"
+  },
+  "transito_julgado": {
+    "description": "Trânsito/Transitado em Julgado",
+    "pattern": "\\b(?:tr[âa]nsito\\s+em\\s+julgado|transitad[oa]\\s+em\\s+julgado)\\b",
+    "type": "basic"
+  },
+  "extincao_processo": {
+    "description": "Extinção do Processo",
+    "pattern": "\\b(?:julgo\\s+extinto|declaro\\s+extinto|processo\\s+extinto)\\b",
+    "type": "basic"
+  },
+  "homologacao": {
+    "description": "Homologação",
+    "pattern": "\\b(?:homologo|homologa[-\\s]se|fica\\s+homologado)\\b",
+    "type": "basic"
+  },
+  "procedencia_improcedencia": {
+    "description": "Procedência ou Improcedência",
+    "pattern": "\\b(?:julgo\\s+(?:im)?procedentes?|(?:im)?procedentes?\\s+o\\s+pedido|denego\\s+a\\s+segurança)\\b",
+    "type": "basic"
+  },
+  "desistencia": {
+    "description": "Desistência",
+    "pattern": "\\b(?:homologo\\s+(?:o\\s+)?pedido\\s+de\\s+desistência|desistência\\s+homologada)\\b",
+    "type": "basic"
+  },
+  "acordo_homologado": {
+    "description": "Acordo Homologado",
+    "pattern": "\\b(?:acordo\\s+homologado|homologo\\s+o\\s+acordo|transação\\s+homologada)\\b",
+    "type": "basic"
+  },
+  "baixa_arquiv_prox": {
+    "description": "Proximidade: Baixa ↔ Arquiv* (até 3 palavras)",
+    "pattern": "\\b(?:(?:dê?[-\\s]se\\s+)?baixa\\s+(?:\\w+\\s+){0,3}arquiv\\w*|arquiv\\w*\\s+(?:\\w+\\s+){0,3}baixa)\\b",
+    "type": "proximity",
+    "max_distance": 3
+  },
+  "julgado_baixa_arquiv": {
+    "description": "Proximidade: Julgado + Baixa + Arquiv* (até 5 palavras)",
+    "pattern": "\\bjulgado\\s*,?\\s+(?:\\w+\\s+){0,3}baixa\\s+(?:\\w+\\s+){0,2}arquiv\\w*\\b",
+    "type": "proximity",
+    "max_distance": 5
+  },
+  "extinto_arquiv_prox": {
+    "description": "Proximidade: Extinto + Arquiv* (até 5 palavras)",
+    "pattern": "\\bextinto\\s+(?:\\w+\\s+){0,5}arquiv\\w*\\b",
+    "type": "proximity",
+    "max_distance": 5
+  },
+  "homolog_arquiv_prox": {
+    "description": "Proximidade: Homolog* + Arquiv* (até 5 palavras)",
+    "pattern": "\\bhomolog\\w*\\s+(?:\\w+\\s+){0,5}arquiv\\w*\\b",
+    "type": "proximity",
+    "max_distance": 5
+  },
+  "sentenca_arquiv_prox": {
+    "description": "Proximidade: Sentença + Arquiv* (até 10 palavras)",
+    "pattern": "\\bsentença\\s+(?:\\w+\\s+){0,10}arquiv\\w*\\b",
+    "type": "proximity",
+    "max_distance": 10
+  }
+}

@@ -1,335 +1,312 @@
 # app_arquivamento_streamlit.py
-# (Versão com lógica de visualização corrigida e ajustada)
+
 from __future__ import annotations
 from pathlib import Path
-import json
-import re
-import urllib.parse
-import html
-import logging as _logging
-import ast
-from io import BytesIO
-
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
-import matplotlib.pyplot as plt
 
-try:
-    from bs4 import BeautifulSoup, NavigableString
-
-    HAS_BS4 = True
-except Exception:
-    HAS_BS4 = False
+# Importa TODOS os nossos componentes de UI
+from app.styles.html_styler import render_html_with_js_styling
+from app.components.sidebar_filters import render_and_apply_filters
+from app.components.sidebar_actions import render_export_button
+from app.components.tab_html_view import render_html_view_tab
 
 # -----------------------------------------------------------------------------
-# Configurações gerais
+# Configurações gerais e Estado da Sessão
 # -----------------------------------------------------------------------------
-st.set_page_config(page_title="Scanner de Arquivamento (SJUR)", layout="wide")
-st.title("📄 Scanner de Indícios de Arquivamento — SJUR")
-_logging.getLogger("streamlit.runtime.caching.hashing").setLevel(_logging.ERROR)
+st.set_page_config(page_title="Analisador de Recortes (SJUR)", layout="wide")
+st.title("📄 Analisador de Recortes com Indícios de Arquivamento")
 
-# -----------------------------------------------------------------------------
-# Sidebar - Carregamento de Arquivos
-# -----------------------------------------------------------------------------
-st.sidebar.title("Fonte de Dados")
-default_csv = st.sidebar.text_input("Caminho do CSV", value="outputs/arquivamento.csv")
-html_dir = st.sidebar.text_input("Pasta de HTML", value="outputs/html")
-uploaded = st.sidebar.file_uploader("...ou carregue um CSV (separador ';')", type=["csv"])
-
-
-# -----------------------------------------------------------------------------
-# Query params helpers
-# -----------------------------------------------------------------------------
-def _get_query_param(key: str, default=None):
-    # A versão mais recente do Streamlit usa st.query_params diretamente
-    if hasattr(st, 'query_params'):
-        return st.query_params.get(key, default)
-    # Fallback para versões mais antigas
-    return st.experimental_get_query_params().get(key, [default])[0]
+# Inicialização do estado da sessão
+if 'selected_recorte_id' not in st.session_state:
+    st.session_state.selected_recorte_id = None
+if 'selected_pub_id' not in st.session_state:
+    st.session_state.selected_pub_id = None
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "📊 Análise de Recortes"
 
 
-def _set_query_params(**kwargs):
-    if hasattr(st, 'query_params'):
-        st.query_params.update(kwargs)
-    else:
-        st.experimental_set_query_params(**kwargs)
-
-
-# -----------------------------------------------------------------------------
-# Carregamento e Preparação do DataFrame
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Carregamento de Dados
+# =============================================================================
 @st.cache_data
-def load_df_from_source(source):
-    df_ = pd.read_csv(source, sep=";")
-    df_["score"] = pd.to_numeric(df_["score"], errors="coerce").fillna(0).astype(int)
-    df_["is_arquivamento_flag"] = (df_["is_arquivamento"].astype(str).str.strip() == "1").astype(int)
-    df_["received_dt"] = pd.to_datetime(df_["received"], format="%Y-%m-%d_%H%M%S", errors="coerce")
-
-    if "hits" in df_.columns:
-        df_["hits_norm"] = df_["hits"].fillna("").apply(
-            lambda x: sorted(list(set([h.split(":", 1)[-1] for h in x.split(",") if ":" in h]))))
-    else:
-        df_["hits_norm"] = [[] for _ in range(len(df_))]
-
-    return df_
+def load_data(recortes_path, publicacoes_path):
+    """Carrega os arquivos CSV em DataFrames."""
+    try:
+        df_recortes = pd.read_csv(recortes_path, sep=";", keep_default_na=False)
+        df_publicacoes = pd.read_csv(publicacoes_path, sep=";", keep_default_na=False)
+        if 'html_content' not in df_publicacoes.columns:
+            df_publicacoes['html_content'] = ""
+        return df_recortes, df_publicacoes
+    except FileNotFoundError:
+        return None, None
 
 
-# -----------------------------------------------------------------------------
-# Destaque de HTML
-# -----------------------------------------------------------------------------
-def highlight_keywords_in_html(html_content: str, hits_seq, processos_seq, indicios_seq):
-    if not HAS_BS4:
-        return f"<p>Instale BeautifulSoup4 para visualizar o HTML: <code>pip install beautifulsoup4</code></p>"
+st.sidebar.title("Fonte de Dados")
+recortes_csv_path = st.sidebar.text_input("CSV de Recortes", value="outputs/recortes.csv")
+publicacoes_csv_path = st.sidebar.text_input("CSV de Publicações", value="outputs/publicacoes.csv")
+html_dir = st.sidebar.text_input("Pasta de HTML", value="outputs/html")
 
-    soup = BeautifulSoup(html_content, "html.parser")
+df_recortes_raw, df_publicacoes_raw = load_data(recortes_csv_path, publicacoes_csv_path)
 
-    # O estilo base para os destaques
-    style = """
-    <style>
-      mark.sjur-hit { background: #ffeb3b !important; padding: 0 .2em !important; border-radius: 3px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important; color: #000 !important; font-weight: bold !important; border: 1px solid #ffc107 !important; }
-      mark.sjur-cnj { background: #e3f2fd !important; padding: 0 .2em !important; border-radius: 3px !important; border: 1px solid #90caf9 !important; }
-      mark.sjur-indicio { background: #ff4444 !important; color: white !important; padding: 0 .2em !important; border-radius: 3px !important; font-weight: bold !important; border: 1px solid #cc0000 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important; }
-      mark.sjur-fgv { background: #4caf50 !important; color: white !important; padding: 0 .2em !important; border-radius: 3px !important; font-weight: bold !important; border: 1px solid #388e3c !important; }
-      mark.sjur-prazo { background: #1565c0 !important; color: white !important; padding: 0 .2em !important; border-radius: 3px !important; font-weight: bold !important; border: 1px solid #0d47a1 !important; }
-      body, div, p, span, td, tr, table, li, ul, ol { background: white !important; color: #333 !important; }
-    </style>
-    """
-
-    # Injeta o estilo no <head> do HTML, se existir, ou no início.
-    if soup.head:
-        soup.head.insert(0, BeautifulSoup(style, "html.parser"))
-    else:
-        soup.insert(0, BeautifulSoup(style, "html.parser"))
-
-    # Compila as regex para os destaques
-    re_hits = re.compile(r'(' + '|'.join(re.escape(term) for term in hits_seq if term) + r')',
-                         re.IGNORECASE) if hits_seq else None
-    re_cnjs = re.compile(
-        r'(' + '|'.join(re.escape(cnj) for cnj in processos_seq if cnj) + r')') if processos_seq else None
-    re_indicios = re.compile(
-        r'(' + '|'.join(re.escape(cnj) for cnj in indicios_seq if cnj) + r')') if indicios_seq else None
-    re_fgv = re.compile(r'\b(funda[cç][aã]o getulio vargas|fgv)\b', re.IGNORECASE)
-    re_prazo = re.compile(r'\b(prazo|termo|dilig[êe]ncia|intima[cç][aã]o|ci[êe]ncia|cita[cç][aã]o)\b', re.IGNORECASE)
-
-    # Itera sobre todos os nós de texto para aplicar os destaques
-    for text_node in soup.find_all(string=True):
-        if text_node.parent.name in ['style', 'script', 'head', 'title']:
-            continue
-
-        text = str(text_node)
-        # Usa uma variável temporária para acumular as substituições
-        new_html = text
-
-        # Aplica as substituições em uma ordem de prioridade
-        if re_fgv: new_html = re_fgv.sub(r'<mark class="sjur-fgv">\1</mark>', new_html)
-        if re_prazo: new_html = re_prazo.sub(r'<mark class="sjur-prazo">\1</mark>', new_html)
-        if re_hits: new_html = re_hits.sub(r'<mark class="sjur-hit">\1</mark>', new_html)
-        if re_cnjs: new_html = re_cnjs.sub(r'<mark class="sjur-cnj">\1</mark>', new_html)
-        if re_indicios: new_html = re_indicios.sub(r'<mark class="sjur-indicio">\1</mark>', new_html)
-
-        # Se o texto foi modificado, substitui o nó original pelo novo HTML
-        if new_html != text:
-            text_node.replace_with(BeautifulSoup(new_html, "html.parser"))
-
-    return str(soup)
-
-
-# -----------------------------------------------------------------------------
-# Lógica Principal da UI
-# -----------------------------------------------------------------------------
-if uploaded:
-    df = load_df_from_source(uploaded)
-elif default_csv and Path(default_csv).exists():
-    df = load_df_from_source(default_csv)
-else:
-    st.warning("Carregue um arquivo CSV ou especifique um caminho válido.")
+if df_recortes_raw is None:
+    st.error(f"Arquivos CSV não encontrados. Verifique os caminhos e execute o coletor.")
     st.stop()
 
-st.markdown("""
-<style>
-    .stDataFrame table { width: 100%; border-collapse: collapse; }
-    .stDataFrame th, .stDataFrame td { vertical-align: top !important; text-align: left; padding: 8px; border: 1px solid #ddd; }
-    .scrollable-cell { max-height: 150px; overflow-y: auto; display: block; white-space: pre-wrap; word-wrap: break-word; }
-</style>
-""", unsafe_allow_html=True)
+# =============================================================================
+# LÓGICA DA SIDEBAR (Componentes)
+# =============================================================================
+df_recortes, df_publicacoes = render_and_apply_filters(df_recortes_raw, df_publicacoes_raw)
 
-# Abas
-tab_res, tab_view, tab_doc = st.tabs(["📊 Resultados", "📰 Visualização", "📘 Documentação"])
+# =============================================================================
+# NAVEGAÇÃO PRINCIPAL (Abas)
+# =============================================================================
+tab_options = ["📊 Análise de Recortes", "📑 Publicações do Recorte", "📰 Visualização do HTML", "📘 Documentação"]
+try:
+    active_tab_index = tab_options.index(st.session_state.active_tab)
+except ValueError:
+    active_tab_index = 0
 
-with tab_res:
-    st.subheader("Filtros")
-    score_min, score_max = int(df["score"].min()), int(df["score"].max())
-    c1, c2, c3, c4 = st.columns([1, 1, 2, 2])
-    score_range = c1.slider("Score", score_min, score_max, (score_min, score_max))
-    only_flagged = c2.checkbox("Apenas `is_arquivamento=1`", False)
-    q_subject = c3.text_input("Busca no assunto", "").strip().lower()
-    q_hits = c4.text_input("Busca nos hits", "").strip().lower()
+active_tab = st.radio(
+    "Navegação", tab_options, index=active_tab_index, key="tabs_radio",
+    horizontal=True, label_visibility="collapsed"
+)
+st.session_state.active_tab = active_tab
 
-    fdf = df[
-        (df["score"].between(score_range[0], score_range[1])) &
-        (df["is_arquivamento_flag"] == 1 if only_flagged else True) &
-        (df["subject"].str.lower().str.contains(q_subject, na=False)) &
-        (df["hits"].str.lower().str.contains(q_hits, na=False))
-        ].copy()
+# =============================================================================
+# LÓGICA DA SIDEBAR (Continuação - Ações sensíveis ao contexto)
+# =============================================================================
+render_export_button(
+    active_tab=active_tab,
+    df_recortes=df_recortes,
+    df_publicacoes=df_publicacoes,
+    selected_recorte_id=st.session_state.selected_recorte_id
+)
 
-    sort_col = _get_query_param("sort", "score")
-    sort_order = _get_query_param("order", "desc")
-    if sort_col in fdf.columns:
-        fdf = fdf.sort_values(by=sort_col, ascending=(sort_order == "asc"))
+# =============================================================================
+# ROTEAMENTO PARA O CONTEÚDO DE CADA ABA
+# =============================================================================
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total de Recortes", len(df))
-    c2.metric("Recortes Filtrados", len(fdf))
-    c3.metric("Marcados como Arquivamento", int(df["is_arquivamento_flag"].sum()))
+# --- Aba 1: Análise de Recortes ---
+if active_tab == "📊 Análise de Recortes":
+    st.header("Recortes (E-mails) Filtrados")
 
-    st.subheader("Resultados filtrados")
-    st.info(
-        "🔴 **indicios**: processos com indícios positivos | 🔵 **processos**: todos os CNJs encontrados no recorte.")
+    if st.session_state.selected_recorte_id and st.session_state.selected_recorte_id not in df_recortes[
+        'entry_id'].values:
+        selected_row = df_recortes_raw[df_recortes_raw['entry_id'] == st.session_state.selected_recorte_id]
+        df_recortes = pd.concat([selected_row, df_recortes], ignore_index=True)
+        st.warning(f"A linha selecionada foi mantida na visualização, embora não corresponda aos filtros atuais.")
 
-    cols_to_show = ["received", "score", "is_arquivamento", "hits", "subject", "indicios", "processos"]
-    view_df = fdf[[c for c in cols_to_show if c in fdf.columns]].copy()
+    st.metric("Total de Recortes Analisados", len(df_recortes_raw))
+    st.metric("Recortes na Visualização Atual", len(df_recortes))
 
-    for col in ["processos", "indicios", "hits"]:
-        if col in view_df.columns:
-            view_df[col] = view_df[col].fillna('').apply(
-                lambda x: f'<div class="scrollable-cell">{html.escape(x).replace("; ", "").replace(", ", "")}</div>')
+    # ======================================================================
+    # CORREÇÃO: Lógica para pré-marcar a linha selecionada
+    # ======================================================================
+    if 'Analisar' not in df_recortes.columns:
+        df_recortes['Analisar'] = False
+    if st.session_state.selected_recorte_id:
+        # Define a coluna 'Analisar' como True para a linha cujo 'entry_id' corresponde ao ID salvo
+        df_recortes.loc[df_recortes['entry_id'] == st.session_state.selected_recorte_id, 'Analisar'] = True
+    # ======================================================================
 
+    cols_recortes = ["Analisar", "total_score", "pubs_com_indicios", "pubs_com_cnj", "processos_com_indicios",
+                     "processos", "subject", "received"]
+    view_cols = [col for col in cols_recortes if col in df_recortes.columns]
+    view_df_recortes = df_recortes[view_cols + ["entry_id"]].sort_values(by="total_score", ascending=False)
 
-    def build_link(row):
-        params = {"viewrow": row["entry_id"]}
-        return f'<a href="?{urllib.parse.urlencode(params)}" target="_self">abrir</a>'
+    st.info("Marque a caixa de seleção 'Analisar' na linha do recorte desejado.")
 
+    edited_df = st.data_editor(
+        view_df_recortes,
+        column_config={
+            "entry_id": None, "Analisar": st.column_config.CheckboxColumn(required=True),
+            "total_score": st.column_config.NumberColumn("Score", format="%.2f"),
+            "pubs_com_indicios": st.column_config.NumberColumn("Pubs c/ Indícios"),
+            "pubs_com_cnj": st.column_config.NumberColumn("Pubs c/ CNJ"),
+            "processos_com_indicios": st.column_config.TextColumn("Processos c/ Indícios", width="medium"),
+            "processos": st.column_config.TextColumn("Todos Processos", width="medium"),
+            "subject": st.column_config.TextColumn("Assunto", width="large"),
+            "received": st.column_config.TextColumn("Recebido"),
+        },
+        hide_index=True, key="recortes_editor"
+    )
 
-    if "entry_id" in fdf.columns:
-        view_df["🔗 Ver HTML"] = fdf.apply(build_link, axis=1)
-
-    st.markdown(view_df.to_html(escape=False, index=False), unsafe_allow_html=True)
-
-# --- Bloco de Ações na Sidebar ---
-st.sidebar.divider()
-st.sidebar.title("Ações")
-
-if st.sidebar.button("Exportar Processos com Indícios (Excel)"):
-    indicios_df = fdf[fdf['indicios'].notna() & (fdf['indicios'] != '')].copy()
-
-    if indicios_df.empty:
-        st.sidebar.warning("Nenhum processo com indício encontrado nos dados filtrados.")
+    selected_rows = edited_df[edited_df["Analisar"]]
+    if not selected_rows.empty:
+        selected_id = selected_rows.iloc[0]["entry_id"]
+        if st.session_state.selected_recorte_id != selected_id:
+            st.session_state.selected_recorte_id = selected_id
+            st.session_state.selected_pub_id = None
+            st.session_state.active_tab = "📑 Publicações do Recorte"
+            st.rerun()
     else:
-        export_data = []
-        for index, row in indicios_df.iterrows():
-            processos_com_indicio = [p.strip() for p in row['indicios'].split(';') if p.strip()]
-            for processo in processos_com_indicio:
-                export_data.append({
-                    "Processo com Indício": processo,
-                    "Recorte (Assunto)": row.get('subject', ''),
-                    "Data do Recorte": row.get('received', ''),
-                    "Score do Recorte": row.get('score', 0),
-                    "Hits no Recorte": row.get('hits', '').replace(',', ', ')
-                })
+        # Se nenhuma linha estiver selecionada, limpa o estado
+        st.session_state.selected_recorte_id = None
+        st.session_state.selected_pub_id = None
 
-        export_df = pd.DataFrame(export_data)
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            export_df.to_excel(writer, index=False, sheet_name='Processos com Indicios')
-            worksheet = writer.sheets['Processos com Indicios']
-            worksheet.set_column('A:A', 30)
-            worksheet.set_column('B:B', 50)
-            worksheet.set_column('C:C', 20)
-            worksheet.set_column('D:D', 10)
-            worksheet.set_column('E:E', 50)
+# --- Aba 2: Publicações do Recorte ---
+if active_tab == "📑 Publicações do Recorte":
+    st.header("Análise das Publicações do Recorte Selecionado")
+    if not st.session_state.selected_recorte_id:
+        st.info("Marque um recorte na aba '📊 Análise de Recortes' para ver suas publicações.")
+    else:
+        recorte_info = df_recortes[df_recortes["entry_id"] == st.session_state.selected_recorte_id]
+        if recorte_info.empty:
+            st.warning(
+                "O recorte selecionado não atende aos filtros atuais da barra lateral. Desmarque os filtros para vê-lo.")
+            st.stop()
 
-        processed_data = output.getvalue()
-        st.sidebar.download_button(
-            label="⬇️ Baixar Relatório Excel",
-            data=processed_data,
-            file_name="relatorio_indicios_de_arquivamento.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        st.sidebar.success(f"{len(export_df)} ocorrências exportadas!")
+        st.subheader(f"Recorte: {recorte_info.iloc[0]['subject']}")
+        df_pubs_filtradas = df_publicacoes[df_publicacoes["email_entry_id"] == st.session_state.selected_recorte_id]
+        df_pubs_com_indicio = df_pubs_filtradas[df_pubs_filtradas["score"] > 0].copy()
 
-# --- Aba de Visualização ---
-with tab_view:
-    st.subheader("Visualização do Recorte com Destaques")
+        if df_pubs_com_indicio.empty:
+            st.success("✔️ Nenhuma publicação com indícios de arquivamento (Score > 0) encontrada neste recorte.")
+        else:
+            # ======================================================================
+            # CORREÇÃO: Lógica para pré-marcar a publicação selecionada
+            # ======================================================================
+            if 'Visualizar' not in df_pubs_com_indicio.columns:
+                df_pubs_com_indicio['Visualizar'] = False
+            if st.session_state.selected_pub_id:
+                df_pubs_com_indicio.loc[
+                    df_pubs_com_indicio['publication_id'] == st.session_state.selected_pub_id, 'Visualizar'] = True
+            # ======================================================================
 
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        st.caption("Destaques: 🔴 CNJs com indício | 🟡 Hits de arquivamento | 🟢 FGV | 🔵 Prazos/Intimações")
-    with c2:
-        ### ALTERAÇÃO ###
-        # O checkbox agora controla a lógica de CSS
-        filter_pubs = st.checkbox("Mostrar apenas publicações com indícios", value=False, key="filter_pubs_checkbox")
+            cols_pubs = ["Visualizar", "tribunal", "secretaria", "data_publicacao", "score", "classification_level",
+                         "processos", "hits", "publication_id"]
+            cols_to_show = [col for col in cols_pubs if col in df_pubs_com_indicio.columns]
+            st.info("Marque 'Visualizar' para destacar a publicação na aba de HTML.")
+            sorted_pubs_df = df_pubs_com_indicio[cols_to_show].sort_values(by="score", ascending=False)
 
-    viewrow_id = _get_query_param("viewrow")
-    row_to_display = None
-
-    if viewrow_id:
-        row_match = df[df["entry_id"] == viewrow_id]
-        if not row_match.empty:
-            row_to_display = row_match.iloc[0]
-    elif not fdf.empty:
-        # Mostra o primeiro item da lista filtrada por padrão
-        row_to_display = fdf.iloc[0]
-
-    if row_to_display is not None:
-        ### ALTERAÇÃO ###
-        # Simplificação da lógica de renderização.
-        # Carregamos o HTML do arquivo, que já deve estar enriquecido pelo coletor.
-
-        html_path = Path(html_dir) / row_to_display["html_filename"]
-        if html_path.exists():
-            html_content_to_render = html_path.read_text(encoding="utf-8", errors="ignore")
-
-            # Aplica os destaques de palavras-chave
-            processos_list = [p.strip() for p in row_to_display.get('processos', '').split(';') if p.strip()]
-            indicios_list = [p.strip() for p in row_to_display.get('indicios', '').split(';') if p.strip()]
-
-            highlighted_html = highlight_keywords_in_html(
-                html_content_to_render,
-                row_to_display["hits_norm"],
-                processos_list,
-                indicios_list
+            edited_pubs_df = st.data_editor(
+                sorted_pubs_df,
+                column_config={
+                    "publication_id": None, "Visualizar": st.column_config.CheckboxColumn(required=True),
+                    "tribunal": st.column_config.TextColumn("Tribunal", width="medium"),
+                    "secretaria": st.column_config.TextColumn("Secretaria", width="medium"),
+                    "data_publicacao": st.column_config.TextColumn("Data da Publicação", width="small"),
+                    "score": st.column_config.NumberColumn("Score", format="%.2f"),
+                    "classification_level": "Nível",
+                    "processos": st.column_config.TextColumn("Processos na Publicação", width="medium"),
+                    "hits": st.column_config.TextColumn("Regras Acionadas", width="large"),
+                },
+                hide_index=True, key="pubs_editor"
             )
 
-            # Injeta o CSS para a filtragem visual se o checkbox estiver marcado
-            css_filter = ""
-            if filter_pubs:
-                css_filter = """
-                <style>
-                  /* Oculta as tabelas que foram marcadas como sem indícios pelo coletor */
-                  table[data-has-indication="false"] {
-                      display: none !important;
-                      border: 2px dashed red !important; /* Apenas para depuração, pode remover */
-                  }
-                </style>
-                """
+            selected_pub_rows = edited_pubs_df[edited_pubs_df["Visualizar"]]
+            if not selected_pub_rows.empty:
+                selected_pub_id = selected_pub_rows.iloc[0]["publication_id"]
+                if st.session_state.selected_pub_id != selected_pub_id:
+                    st.session_state.selected_pub_id = selected_pub_id
+                    st.session_state.active_tab = "📰 Visualização do HTML"
+                    st.rerun()
+            else:
+                # Se nenhuma publicação for selecionada, limpa o estado
+                st.session_state.selected_pub_id = None
 
-            final_html = css_filter + highlighted_html
-            components.html(final_html, height=700, scrolling=True)
+# --- Aba 3: Visualização do HTML (Componentizada) ---
+if active_tab == "📰 Visualização do HTML":
+    render_html_view_tab(
+        df_recortes_raw=df_recortes_raw,
+        df_publicacoes_raw=df_publicacoes_raw,
+        selected_recorte_id=st.session_state.selected_recorte_id,
+        selected_pub_id=st.session_state.selected_pub_id,
+        html_dir=html_dir
+    )
 
-        else:
-            st.error(f"Arquivo HTML não encontrado: {html_path}")
-
-    else:
-        st.info("Selecione um recorte na aba 'Resultados' para visualizar ou limpe os filtros.")
-
-with tab_doc:
+# --- Aba 4: Documentação ---
+if active_tab == "📘 Documentação":
     st.markdown("""
-    ### O que esta aplicação faz?
-    - **Análise por Publicação**: Cada publicação dentro de um recorte é analisada individualmente para máxima precisão.
-    - **Lê um CSV**: Carrega os resultados do pipeline de coleta.
-    - **Filtros Avançados**: Permite filtrar por score, flag de arquivamento e termos no assunto ou nos `hits`.
-    - **Visualização com Destaques**: Exibe o HTML do recorte com destaques visuais:
-        - 🔴 **CNJs com Indício**: Processos encontrados em publicações que contêm termos de arquivamento.
-        - 🟡 **Hits de Arquivamento**: Os termos do léxico que geraram o score.
-        - 🟢 **FGV**: Menções à Fundação Getúlio Vargas.
-        - 🔵 **Prazos/Intimações**: Termos relacionados a prazos processuais.
-    - **Filtragem Visual**: Na aba "Visualização", o checkbox "Mostrar apenas publicações com indícios" oculta dinamicamente as publicações que não contêm termos de arquivamento, facilitando a análise.
+    # Documentação das Regras Heurísticas para Detecção de Arquivamento
 
-    ### Explicação das Colunas
-    - **score**: Soma dos scores de cada publicação individual dentro do recorte.
-    - **is_arquivamento**: Flag `1` se o score total for >= 3.
-    - **hits**: Termos do léxico que contribuíram para o score.
-    - **processos**: Todos os CNJs únicos encontrados em todo o recorte.
-    - **indicios**: Apenas os CNJs que estavam em publicações contendo indícios positivos de arquivamento.
+    **Projeto:** FGV – SJUR – Coleta e Tratamento de Informações Jurídicas  
+    **Versão das Regras:** 1.4.0  
+    **Propósito:** Detalhar a metodologia, a estrutura e os critérios utilizados pelo classificador heurístico para identificar indícios de arquivamento de processos em publicações jurídicas.
+
+    ---
+
+    ## 1. Visão Geral e Metodologia
+
+    O classificador heurístico opera sobre o texto extraído das publicações jurídicas para calcular um **escore de arquivamento (`score`)**. Este escore é gerado através de um sistema de **regras ponderadas**, onde diferentes termos e contextos recebem pesos positivos ou negativos.
+
+    O processo segue três etapas principais:
+
+    1.  **Normalização do Texto:** O texto original é padronizado (minúsculas, remoção de acentos) para garantir a consistência da análise.
+    2.  **Análise por Padrões (Regex):** O sistema varre o texto em busca de padrões textuais (expressões regulares) definidos no arquivo `archival_heuristic_rules.json`. Cada padrão encontrado contribui com seu peso para o escore total.
+    3.  **Classificação por Limiares:** O escore numérico final é traduzido em uma classificação categórica (ex: "Arquivamento forte"), facilitando a interpretação pelo usuário.
+
+    Esta abordagem é transparente, auditável e permite que as regras de negócio sejam refinadas de forma centralizada, sem a necessidade de alterar o código-fonte da aplicação.
+
+    ---
+
+    ## 2. Detalhamento das Categorias de Padrões
+
+    As regras são organizadas em categorias semânticas para refletir a natureza e a força de cada indício.
+
+    ### 2.1. Categoria: `nucleo`
+
+    **Função:** Contém os sinais mais fortes e diretos de arquivamento, baixa ou extinção. A presença de um termo desta categoria é um indicador de alta confiança.
+
+    | Regra (Descrição) | Peso | Exemplo de Expressão Capturada |
+    | :------------------ | :--- | :------------------------------ |
+    | **Comando de Arquivamento** | `1.00` | `arquive-se`, `arquivem-se` |
+    | **Arquivamento Definitivo** | `1.00` | `arquivamento definitivo`, `arquivado definitivamente` |
+    | **Baixa com Contexto de Arquivamento** | `0.90` | `baixa e posterior arquivamento` |
+    | **Baixa Definitiva** | `0.80` | `baixa definitiva` |
+    | **Comando de Extinção** | `0.75` | `extinto o processo`, `extinção do feito` |
+    | **Arquivamento (Genérico)** | `0.70` | `determino o arquivamento` |
+    | **Baixa na Distribuição** | `0.60` | `baixa na distribuição` |
+    | **Arquivamento Provisório** | `0.50` | `arquivamento provisório` |
+
+    ### 2.2. Categoria: `adicional`
+
+    **Função:** Contém eventos processuais que, embora não sejam o ato de arquivamento em si, são fortes indicadores de que o processo está em sua fase final.
+
+    | Regra (Descrição) | Peso | Exemplo de Expressão Capturada |
+    | :------------------ | :--- | :------------------------------ |
+    | **Trânsito em Julgado** | `0.65` | `transitada em julgado`, `transitado o feito em julgado` |
+    | **Desistência da Ação** | `0.50` | `homologo a desistência` |
+    | **Decisão de Mérito (Julgamento)** | `0.45` | `julgo improcedente o pedido`, `julgar procedente a ação` |
+    | **Decisão em Mandado de Segurança** | `0.45` | `concedo a segurança`, `denegar a segurança` |
+    | **Revelia** | `0.35` | `decreto a revelia`, `não apresentou contestação` |
+
+    ### 2.3. Categoria: `reforco`
+
+    **Função:** Contém termos que indicam o contexto de uma decisão final. Sozinhos, têm baixo impacto, mas aumentam a confiança quando combinados com regras das categorias `nucleo` ou `adicional`.
+
+    | Regra (Descrição) | Peso | Exemplo de Expressão Capturada |
+    | :------------------ | :--- | :------------------------------ |
+    | **Termos de Fecho/Dispositivo** | `0.20` | `sentença`, `dispositivo`, `isto posto`, `ante o exposto` |
+
+    ### 2.4. Categoria: `negacao`
+
+    **Função:** Contém termos que indicam o oposto de um arquivamento. A presença de um destes termos aplica uma penalidade severa ao escore, ajudando a evitar falsos positivos.
+
+    | Regra (Descrição) | Peso | Exemplo de Expressão Capturada |
+    | :------------------ | :---- | :------------------------------ |
+    | **Negação ou Desarquivamento** | `-1.00` | `desarquive-se`, `não é caso de arquivamento` |
+
+    ---
+
+    ## 3. Regras de Contexto e Classificação Final
+
+    ### 3.1. Boost de Proximidade
+
+    Para aumentar a precisão, uma pontuação bônus (`boost`) é aplicada se certos termos aparecerem próximos no texto.
+
+    -   **Condição:** A expressão "trânsito em julgado" (e suas variações) aparece a até 300 caracteres de distância do comando "arquive-se" (ou "arquivem-se").
+    -   **Efeito:** Adiciona `+0.20` ao escore final.
+    -   **Justificativa:** Esta combinação representa o fluxo processual mais clássico e confiável para o arquivamento.
+
+    ### 3.2. Limiares de Classificação (`thresholds`)
+
+    Após o cálculo final do escore, o sistema o converte em um nível de confiança legível:
+
+    | Nível de Confiança | Condição de Escore | Descrição |
+    | :----------------- | :----------------- | :---------- |
+    | **Arquivamento forte** | `score ≥ 0.90` | A publicação contém indícios explícitos e de alta confiança de que o processo foi encerrado. |
+    | **Arquivamento provável** | `0.60 ≤ score < 0.90` | A publicação contém múltiplos indícios consistentes, mas sem um comando direto e inequívoco. |
+    | **Não identificado** | `score < 0.60` | A publicação não apresenta indícios suficientes para uma classificação positiva. |
     """)

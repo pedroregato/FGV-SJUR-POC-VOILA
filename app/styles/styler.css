@@ -1,0 +1,20 @@
+/* app/styles/styler.css */
+
+body {
+    background-color: #ffffff !important;
+}
+
+mark.sjur-hit {
+    background-color: #ffeb3b;
+    color: #000000;
+    font-weight: bold;
+    padding: 0.1em 0.2em;
+    border-radius: 3px;
+}
+
+mark.sjur-cnj {
+    background-color: #e3f2fd;
+    border: 1px solid #90caf9;
+    padding: 0.1em 0.2em;
+    border-radius: 3px;
+}
