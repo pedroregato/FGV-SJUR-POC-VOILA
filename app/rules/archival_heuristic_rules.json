@@ -4,74 +4,44 @@
     "type": "cnj",
     "description": "Número CNJ"
   },
-  "arq_direto": {
-    "description": "Comando Direto de Arquivamento (sem 'baixa')",
-    "pattern": "\\b(arquivem?-se|arquive-se)\\b",
-    "type": "basic"
+  "arquivamento_direto": {
+    "pattern": "(?i)\\barquiv(?:e-se|em-se|amento)\\b",
+    "type": "basic",
+    "score": 2.2,
+    "description": "Arquivamento explícito (arquive-se/arquivamento)"
   },
   "baixa_distribuicao": {
-    "description": "Baixa na Distribuição",
-    "pattern": "\\b(?:baixa\\s+na\\s+distribuição|dando[-\\s]se\\s+baixa\\s+na\\s+distribuição)\\b",
-    "type": "basic"
+    "pattern": "(?i)\\bbaixa\\s+na\\s+distribu(?:i|í)\\u00e7(?:a|ã)o\\b",
+    "type": "basic",
+    "score": 1.6,
+    "description": "Baixa na distribuição"
   },
-  "transito_julgado": {
-    "description": "Trânsito/Transitado em Julgado",
-    "pattern": "\\b(?:tr[âa]nsito\\s+em\\s+julgado|transitad[oa]\\s+em\\s+julgado)\\b",
-    "type": "basic"
+  "conclusos_arquivamento": {
+    "pattern": "(?i)\\bconclus(?:o|\\u00f5)s\\s+(?:para|ao)\\s+arquiv(?:o|amento)\\b",
+    "type": "basic",
+    "score": 1.2,
+    "description": "Conclusos para arquivamento"
   },
   "extincao_processo": {
-    "description": "Extinção do Processo",
-    "pattern": "\\b(?:julgo\\s+extinto|declaro\\s+extinto|processo\\s+extinto)\\b",
-    "type": "basic"
+    "pattern": "(?i)\\bextin\\u00e7(?:a|ã)o\\s+do\\s+processo\\b",
+    "type": "basic",
+    "score": 1.5,
+    "description": "Extinção do processo"
   },
-  "homologacao": {
-    "description": "Homologação",
-    "pattern": "\\b(?:homologo|homologa[-\\s]se|fica\\s+homologado)\\b",
-    "type": "basic"
-  },
-  "procedencia_improcedencia": {
-    "description": "Procedência ou Improcedência",
-    "pattern": "\\b(?:julgo\\s+(?:im)?procedentes?|(?:im)?procedentes?\\s+o\\s+pedido|denego\\s+a\\s+segurança)\\b",
-    "type": "basic"
-  },
-  "desistencia": {
-    "description": "Desistência",
-    "pattern": "\\b(?:homologo\\s+(?:o\\s+)?pedido\\s+de\\s+desistência|desistência\\s+homologada)\\b",
-    "type": "basic"
-  },
-  "acordo_homologado": {
-    "description": "Acordo Homologado",
-    "pattern": "\\b(?:acordo\\s+homologado|homologo\\s+o\\s+acordo|transação\\s+homologada)\\b",
-    "type": "basic"
-  },
-  "baixa_arquiv_prox": {
-    "description": "Proximidade: Baixa ↔ Arquiv* (até 3 palavras)",
-    "pattern": "\\b(?:(?:dê?[-\\s]se\\s+)?baixa\\s+(?:\\w+\\s+){0,3}arquiv\\w*|arquiv\\w*\\s+(?:\\w+\\s+){0,3}baixa)\\b",
+  "transito_em_julgado_perto_arquiv": {
+    "pattern": "(?i)\\btr\\u00e2nsito\\s+em\\s+julgado\\b[\\s\\S]{0,120}?\\barquiv\\w*\\b",
     "type": "proximity",
-    "max_distance": 3
+    "score": 1.8,
+    "description": "Trânsito em julgado próximo de arquivamento (até ~120 chars)"
   },
-  "julgado_baixa_arquiv": {
-    "description": "Proximidade: Julgado + Baixa + Arquiv* (até 5 palavras)",
-    "pattern": "\\bjulgado\\s*,?\\s+(?:\\w+\\s+){0,3}baixa\\s+(?:\\w+\\s+){0,2}arquiv\\w*\\b",
+  "sentenca_arquivamento": {
+    "pattern": "(?i)\\bsenten\\u00e7a\\b[\\s\\S]{0,140}?\\barquiv\\w*\\b",
     "type": "proximity",
-    "max_distance": 5
+    "score": 1.4,
+    "description": "Sentença referindo-se a arquivamento"
   },
-  "extinto_arquiv_prox": {
-    "description": "Proximidade: Extinto + Arquiv* (até 5 palavras)",
-    "pattern": "\\bextinto\\s+(?:\\w+\\s+){0,5}arquiv\\w*\\b",
-    "type": "proximity",
-    "max_distance": 5
-  },
-  "homolog_arquiv_prox": {
-    "description": "Proximidade: Homolog* + Arquiv* (até 5 palavras)",
-    "pattern": "\\bhomolog\\w*\\s+(?:\\w+\\s+){0,5}arquiv\\w*\\b",
-    "type": "proximity",
-    "max_distance": 5
-  },
-  "sentenca_arquiv_prox": {
-    "description": "Proximidade: Sentença + Arquiv* (até 10 palavras)",
-    "pattern": "\\bsentença\\s+(?:\\w+\\s+){0,10}arquiv\\w*\\b",
-    "type": "proximity",
-    "max_distance": 10
+  "thresholds": {
+    "forte": 0.9,
+    "provavel": 0.6
   }
 }

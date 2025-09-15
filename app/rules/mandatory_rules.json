@@ -1,0 +1,24 @@
+{
+  "must_have_cnj": {
+    "description": "A publicação deve conter um número de processo no formato CNJ.",
+    "pattern": "\\b\\d{7}-\\d{2}\\.\\d{4}\\.\\d\\.\\d{2}\\.\\d{4}\\b",
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-cnj",
+      "background_color": "#e3f2fd !important",
+      "text_color": "#0d47a1 !important",
+      "border": "1px solid #90caf9 !important"
+    }
+  },
+  "must_fgv_party": {
+    "description": "A FGV deve ser parte no processo.",
+    "pattern": "(?i)(?:parte|partes|reu|autora|autor|réu|ré)[:\\s][^:]*\\b(fundacao\\s+getulio\\s+vargas|fgv|carlos\\s+ivan\\s+simonsen\\s+leal)\\b(?=.*conteudo:)|(?i)(?:REU|AUTOR|AUTORA|RÉU|RÉ)[:\\s][^:]*\\b(fundacao\\s+getulio\\s+vargas|fgv|carlos\\s+ivan\\s+simonsen\\s+leal)\\b|(?i)(decio\\s+flavio\\s+goncalves\\s+torres\\s+freire)|(?i)(?<=requerido[:\\s][^:]*)\\b(fundacao\\s+getulio\\s+vargas)\\b",
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-cnj",
+      "background_color": "#b31c39 !important",
+      "text_color": "#ffffff !important",
+      "border": "1px solid #90caf9 !important"
+    }
+  }
+}

@@ -1,107 +1,106 @@
+# app/rules/archival_rules.py (VERSÃO CORRIGIDA - GARANTE A COMPILAÇÃO)
+
 import json
-import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+import regex as re
 
 
-class ArchivalRulesManager:
-    """
-    Componente centralizado para gerenciar todas as regras de detecção de arquivamento.
-    Garante que classificador e visualização usem exatamente as mesmas regras.
-    """
+class SjurRulesManager:
+    def __init__(self):
+        self.rules_dir = Path(__file__).parent
+        self.mandatory_rules_file = self.rules_dir / "mandatory_rules.json"
+        self.determinant_rules_file = self.rules_dir / "determinant_rules.json"
+        self.context_rules_file = self.rules_dir / "context_rules.json"
 
-    def __init__(self, rules_file: str = None):
-        self.rules_file = rules_file or Path(__file__).parent / "archival_heuristic_rules.json"
-        self._rules = None
-        self._compiled_patterns = None
+        self.mandatory_rules = {}
+        self.determinant_rules = {}
+        self.context_rules = {}
+        self._rules_loaded = False
 
-    @property
-    def rules(self) -> Dict:
-        """Carrega regras do JSON (lazy loading)"""
-        if self._rules is None:
-            with open(self.rules_file, 'r', encoding='utf-8') as f:
-                self._rules = json.load(f)
-        return self._rules
+    # app/rules/archival_rules.py (CORREÇÃO CRÍTICA)
 
-    @property
-    def compiled_patterns(self) -> Dict[str, re.Pattern]:
-        """Retorna patterns regex compilados (cache)"""
-        if self._compiled_patterns is None:
-            self._compiled_patterns = {}
-            for rule_id, rule_data in self.rules.items():
+    def _load_rules_from_file(self, file_path: Path) -> dict:
+        """Lê um arquivo JSON de regras e compila os padrões de regex."""
+        if not file_path.exists():
+            print(f"AVISO: Arquivo de regras não encontrado: {file_path}")
+            return {}
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            rules_data = json.load(f)
+
+        # >>>>> CORREÇÃO: Cria uma cópia profunda para não modificar o original <<<<<
+        compiled_rules = {}
+        for rule_id, spec in rules_data.items():
+            spec_copy = spec.copy()  # Cria cópia para não modificar o original
+            if "pattern" in spec_copy:
                 try:
-                    self._compiled_patterns[rule_id] = re.compile(
-                        rule_data['pattern'],
-                        re.IGNORECASE
-                    )
+                    # Adiciona a chave '_compiled_regex' à cópia
+                    spec_copy["_compiled_regex"] = re.compile(spec_copy["pattern"], re.DOTALL | re.IGNORECASE)
                 except re.error as e:
-                    print(f"Erro ao compilar regex '{rule_id}': {e}")
-        return self._compiled_patterns
+                    print(f"AVISO: Erro ao compilar a regra '{rule_id}' em {file_path.name}: {e}")
+                    spec_copy["_compiled_regex"] = None
+            compiled_rules[rule_id] = spec_copy
 
-    def get_basic_patterns(self) -> Dict[str, Dict]:
-        """Retorna apenas patterns básicos"""
-        return {k: v for k, v in self.rules.items()
-                if v.get('type', 'basic') == 'basic'}
+        return compiled_rules
 
-    def get_proximity_patterns(self) -> Dict[str, Dict]:
-        """Retorna apenas patterns de proximidade"""
-        return {k: v for k, v in self.rules.items()
-                if v.get('type') == 'proximity'}
+    def load_all_rules(self, force_reload: bool = False):
+        """Carrega todas as categorias de regras dos seus respectivos arquivos JSON."""
+        if self._rules_loaded and not force_reload:
+            return
 
-    def get_cnj_pattern(self) -> str:
-        """Retorna pattern para CNJ"""
-        return self.rules.get('cnj', {}).get('pattern', r'\b\d{7}-\d{2}\.\d{4}\.\d{1}\.\d{2}\.\d{4}\b')
+        self.mandatory_rules = self._load_rules_from_file(self.mandatory_rules_file)
+        self.determinant_rules = self._load_rules_from_file(self.determinant_rules_file)
+        self.context_rules = self._load_rules_from_file(self.context_rules_file)
 
-    def find_matches(self, text: str, rule_types: List[str] = None) -> List[Dict]:
-        """
-        Encontra todos os matches no texto usando as regras especificadas.
+        self._rules_loaded = True
 
-        Args:
-            text: Texto para analisar
-            rule_types: Lista de tipos ['basic', 'proximity'] ou None para todos
+    def check_mandatory_rules(self, text: str) -> bool:
+        """Verifica se todas as regras mandatórias habilitadas são satisfeitas."""
+        if not self.mandatory_rules: return True
 
-        Returns:
-            Lista de matches com detalhes completos
-        """
-        matches = []
+        for spec in self.mandatory_rules.values():
+            if spec.get("enabled", False) and spec.get("_compiled_regex"):
+                if not spec["_compiled_regex"].search(text):
+                    return False  # Se uma regra mandatória falhar, retorna False imediatamente
+        return True
 
-        for rule_id, pattern in self.compiled_patterns.items():
-            rule_data = self.rules[rule_id]
+    def calculate_score(self, text: str) -> dict:
+        """Calcula o score total com base nas regras determinantes."""
+        total_score = 0.0
+        hits = {}
+        if not self.determinant_rules: return {"score": total_score, "hits": hits}
 
-            # Filtra por tipo se especificado
-            if rule_types and rule_data.get('type', 'basic') not in rule_types:
-                continue
+        for rule_id, spec in self.determinant_rules.items():
+            if spec.get("enabled", False) and spec.get("_compiled_regex"):
+                matches = spec["_compiled_regex"].findall(text)
+                if matches:
+                    count = len(matches)
+                    hits[rule_id] = count
+                    total_score += spec.get("score", 0.0) * count
 
-            # Encontra matches
-            for match in pattern.finditer(text):
-                matches.append({
-                    'rule_id': rule_id,
-                    'rule_type': rule_data.get('type', 'basic'),
-                    'description': rule_data.get('description', rule_id),
-                    'match_text': match.group(0),
-                    'start_pos': match.start(),
-                    'end_pos': match.end(),
-                    'score': rule_data.get('score', 1.0),
-                    'pattern': rule_data['pattern']
-                })
+        return {"score": total_score, "hits": hits}
 
-        return matches
+    def extract_context_data(self, text: str) -> dict:
+        """Extrai metadados e encontra hits de contexto."""
+        metadata = {}
+        context_hits = {}
+        if not self.context_rules: return {"metadata": metadata, "context_hits": context_hits}
 
-    def calculate_score(self, matches: List[Dict]) -> float:
-        """Calcula score total baseado nos matches"""
-        return sum(match['score'] for match in matches)
+        for rule_id, spec in self.context_rules.items():
+            if spec.get("enabled", False) and spec.get("_compiled_regex"):
+                if spec.get("type") == "metadata_extractor" and "target_field" in spec:
+                    match = spec["_compiled_regex"].search(text)
+                    if match:
+                        # Pega o primeiro grupo de captura, se existir, senão a correspondência inteira
+                        value = match.group(1) if match.groups() else match.group(0)
+                        metadata[spec["target_field"]] = value.strip()
+                elif spec.get("type") == "highlight":
+                    matches = spec["_compiled_regex"].findall(text)
+                    if matches:
+                        context_hits[rule_id] = len(matches)
 
-    def format_hits_for_display(self, matches: List[Dict]) -> str:
-        """Formata matches para exibição no CSV"""
-        formatted = []
-        for match in matches:
-            formatted.append(f"{match['description']} (texto: \"{match['match_text']}\")")
-        return "; ".join(formatted)
-
-    def extract_hit_texts(self, formatted_hits: str) -> List[str]:
-        """Extrai textos dos hits formatados (para compatibilidade)"""
-        return re.findall(r'texto: "([^"]+)"', formatted_hits)
+        return {"metadata": metadata, "context_hits": context_hits}
 
 
-# Instância global (singleton)
-archival_rules = ArchivalRulesManager()
+# Cria a instância singleton que será usada em toda a aplicação
+sjur_rules = SjurRulesManager()

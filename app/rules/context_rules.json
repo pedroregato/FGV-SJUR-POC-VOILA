@@ -1,0 +1,46 @@
+{
+  "context_concurso": {
+    "description": "Termos relacionados a concurso público.",
+    "type": "highlight",
+    "pattern": "\\b(concurso|certame|edital de abertura)\\b",
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-context-concurso",
+      "background_color": "#e1bee7 !important",
+      "border": "1px dashed #ab47bc !important"
+    }
+  },
+  "meta_tribunal": {
+    "description": "Extrai o nome do Tribunal.",
+    "type": "metadata_extractor",
+    "pattern": "Tribunal:\\s*([^\\n<]+)",
+    "target_field": "tribunal",
+    "enabled": true,
+    "style": {
+      "background_color": "#0a3169 !important",
+      "text_color": "#ffffff !important"
+    }
+  },
+  "meta_secretaria": {
+    "description": "Extrai o nome da Secretaria.",
+    "type": "metadata_extractor",
+    "pattern": "Secretaria:\\s*([^\\n<]+)",
+    "target_field": "secretaria",
+    "enabled": true,
+    "style": {
+      "background_color": "#0a3169 !important",
+      "text_color": "#ffffff !important"
+    }
+  },
+  "meta_data_publicacao": {
+    "description": "Extrai a Data de Publicação.",
+    "type": "metadata_extractor",
+    "pattern": "Data de Publica\\u00e7\\u00e3o:\\s*(\\d{2}/\\d{2}/\\d{4})",
+    "target_field": "data_publicacao",
+    "enabled": true,
+    "style": {
+      "background_color": "#0a3169",
+      "text_color": "#ffffff !important"
+    }
+  }
+}

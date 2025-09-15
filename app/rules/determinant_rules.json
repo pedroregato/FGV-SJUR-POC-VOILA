@@ -1,0 +1,173 @@
+{
+  "prox_baixa_arquiv": {
+    "description": "Proximidade entre 'baixa' e 'arquivamento'.",
+    "type": "proximity",
+    "pattern": "(?i)\\b(baixa|baixado)\\b.{1,50}\\b(arquiv\\w*)\\b",
+    "score": 1.5,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-prox-baixa-arq",
+      "background_color": "#a5d6a7 !important"
+    }
+  },
+  "prox_transito_julgado_arquiv": {
+    "description": "Proximidade entre 'trânsito em julgado' e 'arquivamento'.",
+    "type": "proximity",
+    "pattern": "(?i)\\btr\\u00e2nsito\\s+em\\s+julgado\\b[\\s\\S]{0,120}?\\barquiv\\w*\\b",
+    "score": 2.5,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-prox-tj-arq",
+      "background_color": "#81c784 !important",
+      "font_weight": "bold"
+    }
+  },
+  "prox_sentenca_arquivamento": {
+    "description": "Proximidade entre 'sentença' e 'arquivamento'.",
+    "type": "proximity",
+    "pattern": "(?i)\\bsenten\\u00e7a\\b[\\s\\S]{0,140}?\\barquiv\\w*\\b",
+    "score": 1.4,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-prox-sentenca-arq",
+      "background_color": "#c8e6c9 !important"
+    }
+  },
+  "prox_julgo_procedente": {
+    "description": "Proximidade entre 'julgo/julgar' e '(im)procedente'.",
+    "type": "proximity",
+    "pattern": "(?i)\\bjulg(?:o|ar)\\b[\\s\\S]{0,70}?\\b(im|pro)cedente\\b",
+    "score": 1.8,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-prox-julgo-proc",
+      "background_color": "#a5d6a7 !important"
+    }
+  },
+  "prox_arquivamento_qualificado": {
+    "description": "Captura 'arquivado definitivamente' ou 'provisoriamente'.",
+    "type": "proximity",
+    "pattern": "(?i)\\barquivad[oa]\\b[\\s\\S]{0,30}?\\b(definitiv[a-z]*|provisori[a-z]*)\\b",
+    "score": 2.5,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-prox-arq-qualif",
+      "background_color": "#81c784 !important",
+      "font_weight": "bold"
+    }
+  },
+  "basic_arquivamento_direto": {
+    "description": "Termos explícitos de arquivamento.",
+    "type": "basic",
+    "pattern": "(?i)\\barquiv(?:e-se|em-se|amento)\\b",
+    "score": 2.2,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-arq-direto",
+      "background_color": "#ffeb3b !important",
+      "font_weight": "bold"
+    }
+  },
+  "basic_transito_julgado": {
+    "description": "Termo 'trânsito em julgado' isolado.",
+    "type": "basic",
+    "pattern": "(?i)\\btr\\u00e2nsito\\s+em\\s+julgado\\b",
+    "score": 3.0,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-tj",
+      "background_color": "#ffc107 !important",
+      "font_weight": "bold"
+    }
+  },
+  "basic_baixa_definitiva": {
+    "description": "Termo 'baixa definitiva'.",
+    "type": "basic",
+    "pattern": "(?i)\\bbaixa\\s+definitiva\\b",
+    "score": 2.0,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-baixa-def",
+      "background_color": "#ffee58 !important"
+    }
+  },
+  "basic_extincao": {
+    "description": "Termos relacionados a 'extinção'.",
+    "type": "basic",
+    "pattern": "(?i)\\b(extin[cç][aã]o do feito|extingo o processo|extinto o feito)\\b",
+    "score": 1.7,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-extincao",
+      "background_color": "#ffecb3 !important"
+    }
+  },
+  "basic_denegar_conceder_seguranca": {
+    "description": "Termos 'denego/concedo a segurança'.",
+    "type": "basic",
+    "pattern": "(?i)\\b(denego|concedo)\\s+a\\s+seguran[cç]a\\b",
+    "score": 1.5,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-seguranca",
+      "background_color": "#fff59d !important"
+    }
+  },
+  "basic_sentenca": {
+    "description": "Termo 'sentença' isolado.",
+    "type": "basic",
+    "pattern": "(?i)\\bsenten[cç]a\\b",
+    "score": 0.5,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-sentenca",
+      "background_color": "#fff9c4 !important"
+    }
+  },
+  "basic_desistencia": {
+    "description": "Termo 'desistência'.",
+    "type": "basic",
+    "pattern": "(?i)\\bdesist\\u00eancia\\b",
+    "score": 1.2,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-desistencia",
+      "background_color": "#ff9800 !important"
+    }
+  },
+  "basic_revelia": {
+    "description": "Termos 'revelia' ou 'revel'.",
+    "type": "basic",
+    "pattern": "(?i)\\b(revelia|revel)\\b",
+    "score": 0.8,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-revelia",
+      "background_color": "#ff9800 !important"
+    }
+  },
+  "basic_nao_apresentou_contestacao": {
+    "description": "Termos relacionados à revelia e não-contestação da ação",
+    "type": "basic",
+    "pattern": "(?i)\\b(revelia|revel|(?:n[aã]o\\s+)?apresentou\\s+contesta[cç][aã]o|n[aã]o\\s+contestou|(?:n[aã]o\\s+)?se\\s+manifestou\\s+nos\\s+autos|(?:n[aã]o\\s+)?compareceu\\s+[aà]s\\s+contesta[cç][aã]o|silêncio\\s+recorrente|omiss[aã]o\\s+de\\s+defesa|defesa\\s+insuficiente|(?:n[aã]o\\s+)?opôs\\s+embargos|(?:n[aã]o\\s+)?impugnou\\s+a\\s+inicial|(?:n[aã]o\\s+)?apresentou\\s+defesa|(?:n[aã]o\\s+)?respodeu\\s+ao\\s+feito|(?:n[aã]o\\s+)?se\\s+pronunciou)\\b",
+    "score": 1.0,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-no-contest",
+      "background_color": "#ff9800 !important"
+    }
+  },
+  "basic_exclusao_processo": {
+      "description": "FGV excluída de partes do processo",
+      "type": "basic",
+      "pattern": "(?i)\\b(exclu[oí]\\s+(?:da\\s+lide|do\\s+polo\\s+passivo|do\\s+processo)|excluir\\s+(?:da\\s+lide|do\\s+polo\\s+passivo|do\\s+processo)|fica\\s+exclu[íi]da\\s+(?:da\\s+lide|do\\s+processo)|exclua-se\\s+da\\s+lide|exclus[aã]o\\s+(?:da\\s+lide|do\\s+polo\\s+passivo))\\b",
+      "score": 2.0,
+      "enabled": true,
+      "style": {
+        "class_name": "sjur-basic-no-contest",
+        "background_color": "#ff9800 !important"
+      }
+    }
+}
+
+
