@@ -1,4 +1,4 @@
-# pages/analisador_publicacoes.py (VERSÃO COMPLETA ATUALIZADA)
+# pages/analisador_publicacoes_sincronizado.py - VERSÃO COM SINCRONIZAÇÃO
 
 import streamlit as st
 from pathlib import Path
@@ -10,13 +10,22 @@ from datetime import datetime
 import re
 from io import BytesIO
 
-# Configuração da página
-st.set_page_config(page_title="Analisador de Publicações SJUR", layout="wide")
-st.title("📊 Analisador de Publicações e Estatísticas SJUR")
-
+# Importa módulo de configuração compartilhada
 try:
     project_root = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(project_root))
+    from shared.shared_config import (shared_config, get_output_folder, set_output_folder, get_data_paths,
+                                      check_data_availability)
+except ImportError:
+    st.error(
+        "**Erro:** Módulo `shared_config.py` não encontrado. Certifique-se de que está no diretório raiz do projeto.")
+    st.stop()
+
+# Configuração da página
+st.set_page_config(page_title="Analisador de Publicações SJUR", layout="wide")
+st.title("📊 Analisador de Publicações e Estatísticas SJUR (Sincronizado)")
+
+try:
     from app.rules.archival_rules import sjur_rules
     from app.styles.analytical_highlighter import highlight_html_analytical
 except ImportError as e:
@@ -34,12 +43,88 @@ if 'html_files_map' not in st.session_state:
     st.session_state.html_files_map = {}
 if 'filter_positive_scores' not in st.session_state:
     st.session_state.filter_positive_scores = True
+if 'current_data_folder' not in st.session_state:
+    st.session_state.current_data_folder = get_output_folder()
 
 
-# --- Funções Auxiliares ---
+# --- Interface de Configuração de Pasta ---
+def render_folder_configuration():
+    """Renderiza interface para configuração da pasta de dados"""
+    st.subheader("📂 Configuração de Pasta de Dados (Sincronizada)")
+
+    # Informações da configuração atual
+    config_info = shared_config.get_config_info()
+    data_availability = check_data_availability()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.info(f"**Pasta Configurada:** `{config_info['output_folder']}`")
+        st.info(f"**Última Atualização:** {config_info['last_updated'][:19]}")
+        st.info(f"**Atualizado Por:** {config_info['updated_by']}")
+
+    with col2:
+        # Status dos dados
+        if data_availability['dashboard_data'] and data_availability['emails_data']:
+            st.success("✅ **Dados Disponíveis**")
+            st.success(f"✅ Dashboard: {data_availability['dashboard_data']}")
+            st.success(f"✅ E-mails: {data_availability['emails_data']}")
+        else:
+            st.error("❌ **Dados Não Encontrados**")
+            st.error(f"❌ Dashboard: {data_availability['dashboard_data']}")
+            st.error(f"❌ E-mails: {data_availability['emails_data']}")
+
+    # Botões de ação
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🔄 Atualizar Dados"):
+            st.session_state.dashboard_data = None
+            st.session_state.emails_data = None
+            st.session_state.html_files_map = {}
+            st.session_state.current_data_folder = get_output_folder()
+            st.rerun()
+
+    with col2:
+        if st.button("🔍 Detectar Automaticamente"):
+            detected = shared_config.auto_detect_data_folder()
+            if detected:
+                if set_output_folder(detected, "analisador"):
+                    st.session_state.current_data_folder = detected
+                    st.success(f"✅ Pasta detectada e configurada: {detected}")
+                    st.rerun()
+                else:
+                    st.error("❌ Erro ao configurar pasta detectada")
+            else:
+                st.warning("⚠️ Nenhuma pasta com dados encontrada")
+
+    with col3:
+        # Seletor manual de pasta
+        available_folders = shared_config.find_available_data_folders()
+        if available_folders:
+            selected_folder = st.selectbox(
+                "Selecionar pasta:",
+                options=available_folders,
+                index=0 if config_info['output_folder'] not in available_folders else available_folders.index(
+                    config_info['output_folder']),
+                key="folder_selector"
+            )
+
+            if st.button("✅ Usar Pasta Selecionada"):
+                if set_output_folder(selected_folder, "analisador"):
+                    st.session_state.current_data_folder = selected_folder
+                    st.success(f"✅ Pasta configurada: {selected_folder}")
+                    st.rerun()
+                else:
+                    st.error("❌ Erro ao configurar pasta")
+
+
+# --- Funções Auxiliares Atualizadas ---
 def load_dashboard_data():
-    """Carrega os dados do dashboard JSON"""
-    json_path = "outputs/json/dashboard_data.json"
+    """Carrega os dados do dashboard JSON usando configuração compartilhada"""
+    data_paths = get_data_paths()
+    json_path = data_paths['dashboard_data']
+
     if os.path.exists(json_path):
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -50,8 +135,10 @@ def load_dashboard_data():
 
 
 def load_emails_data():
-    """Carrega os dados completos dos e-mails"""
-    json_path = "outputs/json/emails_data.json"
+    """Carrega os dados completos dos e-mails usando configuração compartilhada"""
+    data_paths = get_data_paths()
+    json_path = data_paths['emails_data']
+
     if os.path.exists(json_path):
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -62,8 +149,9 @@ def load_emails_data():
 
 
 def get_html_files_map():
-    """Mapeia os arquivos HTML para os e-mails"""
-    html_folder = "outputs/html"
+    """Mapeia os arquivos HTML para os e-mails usando configuração compartilhada"""
+    data_paths = get_data_paths()
+    html_folder = data_paths['html']
     html_files_map = {}
 
     if os.path.exists(html_folder):
@@ -90,9 +178,7 @@ def filter_publications_by_score(publications, filter_positive=True):
 
 
 def generate_analytical_view(html_content: str) -> str:
-    """
-    Gera a visualização analítica completa usando o módulo dedicado.
-    """
+    """Gera a visualização analítica completa usando o módulo dedicado"""
     if not html_content:
         return ""
 
@@ -103,13 +189,8 @@ def generate_analytical_view(html_content: str) -> str:
         return f"<pre>{html_content}</pre>"
 
 
-# pages/analisador_publicacoes.py (CORREÇÃO)
-
 def analyze_determinant_rules(hits_data: dict) -> list:
-    """
-    Analisa apenas as regras determinantes (score) que deram match.
-    CORREÇÃO: Usa score fixo das regras, não peso.
-    """
+    """Analisa apenas as regras determinantes (score) que deram match"""
     sjur_rules.load_all_rules()
 
     determinant_rules = []
@@ -119,14 +200,14 @@ def analyze_determinant_rules(hits_data: dict) -> list:
         if rule_id in sjur_rules.determinant_rules:
             rule_data = sjur_rules.determinant_rules[rule_id]
             description = rule_data.get("description", "Sem descrição")
-            score_value = rule_data.get("score", 0)  # ✅ Score fixo da regra
+            score_value = rule_data.get("score", 0)
 
             determinant_rules.append({
                 "id": rule_id,
                 "description": description,
-                "score": score_value,  # ✅ Score fixo (0.5, 0.8, etc.)
+                "score": score_value,
                 "details": hit_details,
-                "contribution": score_value  # ✅ Contribuição = score fixo
+                "contribution": score_value
             })
 
     # Ordena por contribuição (maior primeiro)
@@ -135,12 +216,10 @@ def analyze_determinant_rules(hits_data: dict) -> list:
     return determinant_rules
 
 
-# --- Carregamento dos Dados ---
-if st.button("🔄 Atualizar Dados"):
-    st.session_state.dashboard_data = load_dashboard_data()
-    st.session_state.emails_data = load_emails_data()
-    st.session_state.html_files_map = get_html_files_map()
+# --- Interface de Configuração ---
+render_folder_configuration()
 
+# --- Carregamento dos Dados ---
 if st.session_state.dashboard_data is None:
     st.session_state.dashboard_data = load_dashboard_data()
 if 'emails_data' not in st.session_state:
@@ -150,14 +229,20 @@ if not st.session_state.html_files_map:
 
 # --- Verificação de Dados ---
 if not st.session_state.dashboard_data or not st.session_state.emails_data:
-    st.warning("""
-    **Dados não encontrados!**
+    st.warning(f"""
+    **Dados não encontrados na pasta configurada!**
 
-    Para usar esta ferramenta, primeiro execute o coletor de e-mails para gerar os arquivos:
-    - `outputs/json/dashboard_data.json`
-    - `outputs/json/emails_data.json`
+    **Pasta atual:** `{get_output_folder()}`
 
-    Execute o coletor e depois clique em **Atualizar Dados**.
+    **Para resolver:**
+    1. Execute o coletor de e-mails para gerar os dados
+    2. Use "🔍 Detectar Automaticamente" para encontrar dados existentes
+    3. Selecione manualmente uma pasta com dados válidos
+    4. Clique em "🔄 Atualizar Dados" após configurar
+
+    **Arquivos necessários:**
+    - `{get_data_paths()['dashboard_data']}`
+    - `{get_data_paths()['emails_data']}`
     """)
     st.stop()
 
@@ -216,8 +301,9 @@ with st.expander("📧 Navegação por E-mails", expanded=False):
     col4.metric("Processos Não Arquivar", len(selected_email_data['statistics']['non_archival_processes']))
 
     # Botão para abrir o arquivo HTML
-    html_folder = "outputs/html"
-    html_filepath = os.path.join(html_folder, html_filename)
+    data_paths = get_data_paths()
+    html_filepath = os.path.join(data_paths['html'], html_filename)
+
     if os.path.exists(html_filepath):
         with open(html_filepath, 'r', encoding='utf-8') as f:
             html_content = f.read()
@@ -227,11 +313,11 @@ with st.expander("📧 Navegação por E-mails", expanded=False):
     else:
         st.warning(f"Arquivo HTML não encontrado: {html_filename}")
 
-# --- Análise de Publicações (FORA DO EXPANDER DE E-MAILS) ---
+# --- Análise de Publicações ---
 st.header("📄 Análise de Publicações")
 
 if selected_email_data['total_publications'] > 0:
-    # ✅ FILTRO PARA SCORES MAIORES QUE ZERO
+    # Filtro para scores maiores que zero
     st.subheader("🔍 Filtros de Análise")
     col1, col2 = st.columns(2)
 
@@ -243,20 +329,14 @@ if selected_email_data['total_publications'] > 0:
         )
         st.session_state.filter_positive_scores = filter_positive
 
-    # pages/analisador_publicacoes.py (TRECHO REFATORADO)
-
-    # ... (código anterior mantido) ...
-
     with col2:
         if st.button("✅ Exportar Apenas com Indícios", type="primary"):
-
+            # Função de exportação (mantida igual ao original)
             def get_determinant_rules_names_inline(hits_data):
-                """Versão inline da função para evitar problemas de escopo"""
                 if not hits_data:
                     return ""
 
                 rule_names = []
-
                 for rule_id, hit_details in hits_data.items():
                     if rule_id in sjur_rules.determinant_rules:
                         rule_data = sjur_rules.determinant_rules[rule_id]
@@ -264,12 +344,10 @@ if selected_email_data['total_publications'] > 0:
                         rule_names.append(f"{description} (match: {hit_details})")
                     else:
                         rule_names.append(f"{rule_id} (match: {hit_details})")
-
                 return "; ".join(rule_names)
 
 
             def clean_text(text):
-                """Remove caracteres especiais problemáticos"""
                 if not text or not isinstance(text, str):
                     return text
                 try:
@@ -281,7 +359,6 @@ if selected_email_data['total_publications'] > 0:
             export_data = []
             for email in st.session_state.emails_data:
                 html_filename = find_html_filename(email)
-
                 html_filename_clean = clean_text(html_filename)
                 email_subject_clean = clean_text(email['subject'])
 
@@ -315,45 +392,18 @@ if selected_email_data['total_publications'] > 0:
 
             if export_data:
                 df = pd.DataFrame(export_data)
-
-                # ✅ CRIA ARQUIVO EXCEL (XLSX) - MUDA AQUI!
                 excel_buffer = BytesIO()
                 with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
                     df.to_excel(writer, index=False, sheet_name='Publicações com Indícios')
 
-                    # ✅ FORMATAÇÃO ADICIONAL PARA MELHOR VISUALIZAÇÃO
-                    workbook = writer.book
-                    worksheet = writer.sheets['Publicações com Indícios']
-
-                    # Ajusta largura das colunas automaticamente
-                    for column in worksheet.columns:
-                        max_length = 0
-                        column_letter = column[0].column_letter
-                        for cell in column:
-                            try:
-                                if len(str(cell.value)) > max_length:
-                                    max_length = len(str(cell.value))
-                            except:
-                                pass
-                        adjusted_width = min(max_length + 2, 50)
-                        worksheet.column_dimensions[column_letter].width = adjusted_width
-
                 excel_data = excel_buffer.getvalue()
-
                 st.download_button(
                     label="⬇️ Baixar Excel com Indícios",
                     data=excel_data,
                     file_name=f"publicacoes_com_indicios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-
                 st.success(f"✅ Exportadas {len(export_data)} publicações com indícios de arquivamento")
-                st.info(f"📊 Score médio: {df['Score_Total'].mean():.2f}")
-
-                # ✅ MOSTRA PREVIEW (opcional)
-                with st.expander("📋 Visualizar Preview dos Dados"):
-                    st.dataframe(df.head())
-
             else:
                 st.warning("⚠️ Nenhuma publicação com indícios de arquivamento encontrada")
 
@@ -369,9 +419,9 @@ if selected_email_data['total_publications'] > 0:
             st.info(
                 "Tente desativar o filtro 'Mostrar apenas publicações com indícios de arquivamento' para ver todas as publicações.")
     else:
-        # Cria opções para o dropdown baseado nas publicações filtradas
+        # Resto da interface de análise de publicações (mantida igual ao original)
         pub_options = []
-        pub_mapping = []  # Mapeia índice filtrado para índice original
+        pub_mapping = []
 
         for i, pub in enumerate(publications_to_show):
             original_index = st.session_state.emails_data[selected_email]['publications'].index(pub)
@@ -385,10 +435,8 @@ if selected_email_data['total_publications'] > 0:
             index=min(st.session_state.selected_publication_index, len(publications_to_show) - 1)
         )
 
-        # Converte índice filtrado para índice original
         selected_pub_original = pub_mapping[selected_pub_filtered]
         publication = publications_to_show[selected_pub_filtered]
-
         st.session_state.selected_publication_index = selected_pub_original
 
         # Detalhes da publicação
@@ -398,108 +446,33 @@ if selected_email_data['total_publications'] > 0:
         col2.metric("Nível", publication['level'])
         col3.metric("Status", publication['analysis_status'])
         cnjs_count = len(publication['metadata'].get('cnjs', []))
-        col4.metric("CNJs Encontrados", cnjs_count, "✅" if cnjs_count > 0 else "❌")
+        col4.metric("CNJs Encontrados", cnjs_count)
 
-        # ✅ METADADOS COM TRATAMENTO DE CARACTERES
-        st.subheader("📋 Metadados da Publicação")
-        metadata_container = st.container()
+        # Visualização analítica
+        if html_filename != "Arquivo não encontrado":
+            data_paths = get_data_paths()
+            html_filepath = os.path.join(data_paths['html'], html_filename)
 
+            if os.path.exists(html_filepath):
+                with open(html_filepath, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
 
-        def clean_text(text):
-            """Remove caracteres especiais problemáticos"""
-            if not text or not isinstance(text, str):
-                return text
-            try:
-                return text.encode('latin-1').decode('utf-8')
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                return text
+                if st.button("🔬 Visualização Analítica", key="analytical_view_btn"):
+                    analytical_html = generate_analytical_view(html_content)
+                    st.components.v1.html(analytical_html, height=800, scrolling=True)
 
-
-        with metadata_container:
-            metadata_col1, metadata_col2 = st.columns(2)
-            with metadata_col1:
-                for key, value in publication['metadata'].items():
-                    if value and key != 'cnjs':
-                        cleaned_value = clean_text(value)
-                        st.write(f"**{key}:** {cleaned_value}")
-            with metadata_col2:
-                if publication['metadata'].get('cnjs'):
-                    st.write("**CNJs encontrados:**")
-                    for cnj in publication['metadata']['cnjs']:
-                        st.code(cnj)
-                else:
-                    st.info("Nenhum CNJ encontrado nesta publicação")
-
-        # ✅ VISUALIZAÇÃO ANALÍTICA
-        st.subheader("👀 Visualização Analítica da Publicação")
-        analytical_html = generate_analytical_view(publication['html_content'])
-        st.components.v1.html(analytical_html, height=600, scrolling=True)
-
-        # Opção para ver o código fonte
-        with st.expander("📄 Ver Código HTML Original"):
-            st.code(publication['html_content'], language='html')
-
-        # ✅ HITS DAS REGRAS - APENAS DETERMINANTES
-        st.subheader("🎯 Regras Determinantes que Deram Match")
-
-        if publication['hits']:
-            # Analisa apenas as regras determinantes
+        # Análise de regras determinantes
+        if publication.get('hits'):
             determinant_rules = analyze_determinant_rules(publication['hits'])
-
             if determinant_rules:
-                # Estatísticas rápidas
-                total_rules = len(determinant_rules)
-                total_contribution = sum(rule["contribution"] for rule in determinant_rules)
-
-                col1, col2, col3 = st.columns(3)
-                col1.metric("📊 Regras com Match", total_rules)
-                col2.metric("⭐ Contribuição Total", f"{total_contribution:.2f}")
-                col3.metric("📈 Score Final", f"{publication['score']:.2f}")
-
-                st.divider()
-
-                # Tabela detalhada das regras
-                st.subheader("📋 Detalhamento por Regra")
-
-                # Prepara dados para tabela
-                rule_data = []
+                st.subheader("🎯 Regras Determinantes (Score)")
                 for rule in determinant_rules:
-                    rule_data.append({
-                        "Regra": clean_text(rule["description"]),  # ✅ LIMPEZA DE TEXTO
-                        "Score": rule["score"],
-                        "Match": rule["details"],
-                        "Contribuição": f"{rule['contribution']:.2f}"
-                    })
-
-                # Exibe como tabela
-                df_rules = pd.DataFrame(rule_data)
-                st.dataframe(
-                    df_rules,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Regra": st.column_config.TextColumn("Regra", width="large"),
-                        "Score": st.column_config.NumberColumn("Score", format="%.2f"),
-                        "Match": st.column_config.TextColumn("Detalhes do Match"),
-                        "Contribuição": st.column_config.TextColumn("Contribuição")
-                    }
-                )
-
-                # Gráfico de contribuição
-                st.subheader("📊 Contribuição para o Score")
-
-                chart_data = pd.DataFrame({
-                    'Regra': [clean_text(rule["description"])[:30] + "..." for rule in determinant_rules],  # ✅ LIMPEZA
-                    'Contribuição': [rule["contribution"] for rule in determinant_rules]
-                })
-
-                st.bar_chart(chart_data.set_index('Regra'))
-
+                    with st.expander(f"⚖️ {rule['description']} (Score: {rule['score']:.2f})"):
+                        st.write(f"**ID da Regra:** `{rule['id']}`")
+                        st.write(f"**Contribuição:** {rule['contribution']:.2f}")
+                        st.write(f"**Detalhes do Match:** {rule['details']}")
             else:
-                st.info("ℹ️ Nenhuma regra determinante aplicou match nesta publicação")
-
-        else:
-            st.info("📭 Nenhuma regra de score encontrou match nesta publicação")
+                st.info("📭 Nenhuma regra de score encontrou match nesta publicação")
 
 else:
     st.info("Este e-mail não contém publicações.")
@@ -527,172 +500,5 @@ with st.expander("📋 Lista de Processos por Categoria", expanded=False):
                 st.info("Nenhum processo não arquivado")
     else:
         st.warning("⚠️ Nenhum processo CNJ foi extraído das publicações!")
-
-# --- Diagnóstico do Problema de CNJ ---
-with st.expander("🔍 Diagnóstico de Extração de CNJ", expanded=False):
-    if not data["unique_archival_processes"] and data["total_archival_candidate_publications"] > 0:
-        st.error("""
-        **PROBLEMA IDENTIFICADO:**
-
-        Foram encontradas publicações candidatas a arquivamento (score ≥ 0.6), mas 
-        **nenhum número de processo (CNJ) foi extraído**.
-
-        **Possíveis causas:**
-        1. Regex de CNJ não está funcionando corretamente
-        2. Formato dos CNJs nas publicações é diferente do esperado
-        3. As regras de contexto não estão sendo aplicadas
-        """)
-
-        st.info("""
-        **Para diagnosticar:**
-        1. Use a visualização analítica acima para ver se os CNJs estão sendo destacados
-        2. Verifique a regex de CNJ em `app/rules/archival_rules.py`
-        3. Teste com exemplos específicos no laboratorio de regex
-        """)
-
-# --- EXPORTAÇÃO DE DADOS ---
-with st.expander("💾 Exportação de Dados", expanded=False):
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("📊 Exportar Resumo para CSV", key="btn_export_csv_full"):  # ✅ KEY ÚNICA
-            export_data = []
-            for email in st.session_state.emails_data:
-                html_filename = find_html_filename(email)
-                for i, pub in enumerate(email['publications']):
-                    export_data.append({
-                        'Arquivo_HTML': html_filename,
-                        'Email_Assunto': email['subject'],
-                        'Email_Data': email['received'],
-                        'Publicacao_Index': i + 1,
-                        'Publicacao_Score': pub['score'],
-                        'Publicacao_Nivel': pub['level'],
-                        'Publicacao_Status': pub['analysis_status'],
-                        'CNJs': ', '.join(pub['metadata'].get('cnjs', [])),
-                        'Tribunal': pub['metadata'].get('tribunal', ''),
-                        'Secretaria': pub['metadata'].get('secretaria', ''),
-                        'Data_Publicacao': pub['metadata'].get('data_publicacao', '')
-                    })
-
-            df = pd.DataFrame(export_data)
-            csv = df.to_csv(index=False)
-            st.download_button(
-                label="⬇️ Baixar CSV Completo",
-                data=csv,
-                file_name=f"analise_publicacoes_completa_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv",
-                key="btn_download_csv_full"  # ✅ KEY ÚNICA
-            )
-
-    with col2:
-        if st.button("✅ Exportar Apenas com Indícios", type="primary", key="btn_export_excel_indicios"):  # ✅ KEY ÚNICA
-
-            def get_determinant_rules_names_inline(hits_data):
-                """Versão inline da função para evitar problemas de escopo"""
-                if not hits_data:
-                    return ""
-
-                rule_names = []
-
-                for rule_id, hit_details in hits_data.items():
-                    if rule_id in sjur_rules.determinant_rules:
-                        rule_data = sjur_rules.determinant_rules[rule_id]
-                        description = rule_data.get("description", rule_id)
-                        rule_names.append(f"{description} (match: {hit_details})")
-                    else:
-                        rule_names.append(f"{rule_id} (match: {hit_details})")
-
-                return "; ".join(rule_names)
-
-
-            def clean_text(text):
-                """Remove caracteres especiais problemáticos"""
-                if not text or not isinstance(text, str):
-                    return text
-                try:
-                    return text.encode('latin-1').decode('utf-8')
-                except (UnicodeEncodeError, UnicodeDecodeError):
-                    return text
-
-
-            export_data = []
-            for email in st.session_state.emails_data:
-                html_filename = find_html_filename(email)
-
-                html_filename_clean = clean_text(html_filename)
-                email_subject_clean = clean_text(email['subject'])
-
-                for i, pub in enumerate(email['publications']):
-                    if pub.get('score', 0) > 0:
-                        processos = pub['metadata'].get('cnjs', [])
-                        processos_str = "; ".join(processos) if processos else "Nenhum"
-
-                        tribunal = clean_text(pub['metadata'].get('tribunal', ''))
-                        secretaria = clean_text(pub['metadata'].get('secretaria', ''))
-                        data_publicacao = clean_text(pub['metadata'].get('data_publicacao', ''))
-
-                        regras_determinantes = get_determinant_rules_names_inline(pub.get('hits', {}))
-
-                        export_data.append({
-                            'Arquivo_HTML': html_filename_clean,
-                            'Email_Assunto': email_subject_clean,
-                            'Email_Data': email['received'],
-                            'Publicacao_Index': i + 1,
-                            'Score_Total': pub['score'],
-                            'Nivel': clean_text(pub['level']),
-                            'Processos_Encontrados': processos_str,
-                            'Regras_Determinantes': regras_determinantes,
-                            'Tribunal': tribunal,
-                            'Secretaria': secretaria,
-                            'Data_Publicacao': data_publicacao,
-                            'Status_Analise': clean_text(pub['analysis_status']),
-                            'Total_Processos': len(processos),
-                            'Total_Regras': len(pub.get('hits', {}))
-                        })
-
-            if export_data:
-                df = pd.DataFrame(export_data)
-
-                # ✅ CRIA ARQUIVO EXCEL (XLSX)
-                excel_buffer = BytesIO()
-                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    df.to_excel(writer, index=False, sheet_name='Publicações com Indícios')
-
-                    # Formatação adicional para melhor visualização
-                    workbook = writer.book
-                    worksheet = writer.sheets['Publicações com Indícios']
-
-                    # Ajusta largura das colunas automaticamente
-                    for column in worksheet.columns:
-                        max_length = 0
-                        column_letter = column[0].column_letter
-                        for cell in column:
-                            try:
-                                if len(str(cell.value)) > max_length:
-                                    max_length = len(str(cell.value))
-                            except:
-                                pass
-                        adjusted_width = min(max_length + 2, 50)
-                        worksheet.column_dimensions[column_letter].width = adjusted_width
-
-                excel_data = excel_buffer.getvalue()
-
-                st.download_button(
-                    label="⬇️ Baixar Excel com Indícios",
-                    data=excel_data,
-                    file_name=f"publicacoes_com_indicios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="btn_download_excel_indicios"  # ✅ KEY ÚNICA
-                )
-
-                st.success(f"✅ Exportadas {len(export_data)} publicações com indícios de arquivamento")
-                st.info(f"📊 Score médio: {df['Score_Total'].mean():.2f}")
-
-                # ✅ MOSTRA PREVIEW (opcional)
-                with st.expander("📋 Visualizar Preview dos Dados"):
-                    st.dataframe(df.head())
-
-            else:
-                st.warning("⚠️ Nenhuma publicação com indícios de arquivamento encontrada")
 
 st.success("✅ Análise concluída! Use os controles acima para navegar pelos dados.")

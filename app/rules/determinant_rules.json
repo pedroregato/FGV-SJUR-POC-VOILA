@@ -36,12 +36,13 @@
   "prox_julgo_procedente": {
     "description": "Proximidade entre 'julgo/julgar' e '(im)procedente'.",
     "type": "proximity",
-    "pattern": "(?i)\\bjulg(?:o|ar)\\b[\\s\\S]{0,70}?\\b(im|pro)cedente\\b",
+    "pattern": "(?i)\\bjulg[oa][\\s\\S]{0,15}?(?:im|pro)cedente\\b",
     "score": 1.8,
     "enabled": true,
     "style": {
       "class_name": "sjur-prox-julgo-proc",
-      "background_color": "#a5d6a7 !important"
+      "background_color": "#a5d6a7 !important",
+      "text_color": "#000000 !important"
     }
   },
   "prox_arquivamento_qualificado": {
@@ -113,17 +114,6 @@
       "background_color": "#fff59d !important"
     }
   },
-  "basic_sentenca": {
-    "description": "Termo 'sentença' isolado.",
-    "type": "basic",
-    "pattern": "(?i)\\bsenten[cç]a\\b",
-    "score": 0.5,
-    "enabled": true,
-    "style": {
-      "class_name": "sjur-basic-sentenca",
-      "background_color": "#fff9c4 !important"
-    }
-  },
   "basic_desistencia": {
     "description": "Termo 'desistência'.",
     "type": "basic",
@@ -158,16 +148,14 @@
     }
   },
   "basic_exclusao_processo": {
-      "description": "FGV excluída de partes do processo",
-      "type": "basic",
-      "pattern": "(?i)\\b(exclu[oí]\\s+(?:da\\s+lide|do\\s+polo\\s+passivo|do\\s+processo)|excluir\\s+(?:da\\s+lide|do\\s+polo\\s+passivo|do\\s+processo)|fica\\s+exclu[íi]da\\s+(?:da\\s+lide|do\\s+processo)|exclua-se\\s+da\\s+lide|exclus[aã]o\\s+(?:da\\s+lide|do\\s+polo\\s+passivo))\\b",
-      "score": 2.0,
-      "enabled": true,
-      "style": {
-        "class_name": "sjur-basic-no-contest",
-        "background_color": "#ff9800 !important"
-      }
+    "description": "FGV excluída de partes do processo",
+    "type": "basic",
+    "pattern": "(?i)\\b(exclu[oí]\\s+(?:da\\s+lide|do\\s+polo\\s+passivo|do\\s+processo)|excluir\\s+(?:da\\s+lide|do\\s+polo\\s+passivo|do\\s+processo)|fica\\s+exclu[íi]da\\s+(?:da\\s+lide|do\\s+processo)|exclua-se\\s+da\\s+lide|exclus[aã]o\\s+(?:da\\s+lide|do\\s+polo\\s+passivo))\\b",
+    "score": 2.0,
+    "enabled": true,
+    "style": {
+      "class_name": "sjur-basic-no-contest",
+      "background_color": "#ff9800 !important"
     }
+  }
 }
-
-

@@ -1,9 +1,17 @@
-# app_coletor.py (VERSÃO CORRIGIDA COM VALORES PADRÃO ORIGINAIS)
+# app_coletor_sincronizado.py - VERSÃO COM SINCRONIZAÇÃO ENTRE APLICAÇÕES
 
 import streamlit as st
 from pathlib import Path
-import sys, time, threading, traceback, queue, pythoncom
+import sys, time, threading, traceback, queue, pythoncom, os
 from datetime import datetime, timedelta
+import json
+
+# Importa módulo de configuração compartilhada
+try:
+    from shared.shared_config import shared_config, get_output_folder, set_output_folder, get_data_paths
+except ImportError:
+    st.error("**Erro:** Módulo `shared_config.py` não encontrado. Certifique-se de que está no mesmo diretório.")
+    st.stop()
 
 st.set_page_config(page_title="Coletor de Recortes SJUR", layout="wide")
 
@@ -15,6 +23,257 @@ try:
 except ImportError as e:
     st.error(f"**Erro Crítico de Importação:** `{e}`")
     st.stop()
+
+# --- Configurações e Constantes ---
+RECENT_FOLDERS_FILE = "recent_folders.json"
+DEFAULT_OUTPUT_FOLDER = "outputs"
+MAX_RECENT_FOLDERS = 5
+
+
+# --- Funções Auxiliares para Gerenciamento de Pastas ---
+@st.cache_data
+def get_system_folders():
+    """Retorna pastas do sistema comumente usadas"""
+    home = Path.home()
+    folders = {
+        "🏠 Pasta Pessoal": str(home),
+        "🖥️ Desktop": str(home / "Desktop") if (home / "Desktop").exists() else str(home),
+        "📁 Documentos": str(home / "Documents") if (home / "Documents").exists() else str(home),
+        "📥 Downloads": str(home / "Downloads") if (home / "Downloads").exists() else str(home),
+        "📂 Pasta Atual": str(Path.cwd()),
+    }
+    return {k: v for k, v in folders.items() if Path(v).exists()}
+
+
+def load_recent_folders():
+    """Carrega pastas recentemente usadas"""
+    try:
+        if Path(RECENT_FOLDERS_FILE).exists():
+            with open(RECENT_FOLDERS_FILE, 'r', encoding='utf-8') as f:
+                recent = json.load(f)
+                # Filtra apenas pastas que ainda existem
+                return [folder for folder in recent if Path(folder).exists()]
+    except Exception:
+        pass
+    return []
+
+
+def save_recent_folder(folder_path):
+    """Salva pasta na lista de recentes"""
+    try:
+        recent = load_recent_folders()
+        folder_path = str(Path(folder_path).resolve())
+
+        # Remove se já existe e adiciona no início
+        if folder_path in recent:
+            recent.remove(folder_path)
+        recent.insert(0, folder_path)
+
+        # Mantém apenas os últimos MAX_RECENT_FOLDERS
+        recent = recent[:MAX_RECENT_FOLDERS]
+
+        with open(RECENT_FOLDERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(recent, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def validate_folder_path(path_str):
+    """Valida e normaliza caminho da pasta"""
+    try:
+        path = Path(path_str).resolve()
+
+        if not path_str.strip():
+            return False, "❌ Caminho não pode estar vazio"
+
+        if path.exists() and not path.is_dir():
+            return False, "❌ Caminho existe mas não é uma pasta"
+
+        if not path.exists():
+            return "create", f"📁 Pasta será criada: {path}"
+
+        if not os.access(path, os.W_OK):
+            return False, "❌ Sem permissão de escrita na pasta"
+
+        return True, f"✅ Pasta válida: {path}"
+
+    except Exception as e:
+        return False, f"❌ Caminho inválido: {str(e)}"
+
+
+def create_folder_if_needed(path_str):
+    """Cria pasta se necessário"""
+    try:
+        path = Path(path_str)
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+            return True, f"✅ Pasta criada: {path}"
+        return True, f"✅ Pasta já existe: {path}"
+    except Exception as e:
+        return False, f"❌ Erro ao criar pasta: {str(e)}"
+
+
+# --- Interface de Seleção de Pasta Sincronizada ---
+def render_folder_selector():
+    """Renderiza o seletor de pasta com sincronização"""
+    st.subheader("📂 Seleção de Pasta de Saída (Sincronizada)")
+
+    # Inicializa o estado com a configuração compartilhada
+    if 'selected_output_folder' not in st.session_state:
+        st.session_state.selected_output_folder = get_output_folder()
+    if 'folder_validation_status' not in st.session_state:
+        st.session_state.folder_validation_status = None
+
+    # Mostra informações de sincronização
+    config_info = shared_config.get_config_info()
+    with st.expander("ℹ️ Informações de Sincronização", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"**Pasta Atual:** `{config_info['output_folder']}`")
+            st.info(f"**Última Atualização:** {config_info['last_updated'][:19]}")
+        with col2:
+            st.info(f"**Atualizado Por:** {config_info['updated_by']}")
+
+            # Botão para detectar automaticamente
+            if st.button("🔍 Detectar Pasta Automaticamente"):
+                detected = shared_config.auto_detect_data_folder()
+                if detected:
+                    st.session_state.selected_output_folder = detected
+                    st.session_state.folder_validation_status = None
+                    st.success(f"✅ Pasta detectada: {detected}")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Nenhuma pasta com dados encontrada")
+
+    # Layout em colunas
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        # Campo principal de entrada
+        folder_input = st.text_input(
+            "Caminho da pasta de saída:",
+            value=st.session_state.selected_output_folder,
+            placeholder="Digite o caminho ou use os botões abaixo...",
+            help="Pasta onde serão salvos os arquivos coletados (sincronizada com o analisador)"
+        )
+
+        # Atualiza o estado quando o input muda
+        if folder_input != st.session_state.selected_output_folder:
+            st.session_state.selected_output_folder = folder_input
+            st.session_state.folder_validation_status = None
+
+    with col2:
+        # Botão de validação
+        if st.button("🔍 Validar", help="Verificar se a pasta é válida"):
+            is_valid, message = validate_folder_path(st.session_state.selected_output_folder)
+            st.session_state.folder_validation_status = (is_valid, message)
+
+    # Exibe status de validação
+    if st.session_state.folder_validation_status:
+        is_valid, message = st.session_state.folder_validation_status
+        if is_valid == True:
+            st.success(message)
+        elif is_valid == "create":
+            st.warning(message)
+        else:
+            st.error(message)
+
+    # Seção de acesso rápido
+    st.markdown("**🚀 Acesso Rápido:**")
+
+    # Botões de pastas do sistema
+    system_folders = get_system_folders()
+    cols = st.columns(len(system_folders))
+
+    for i, (name, path) in enumerate(system_folders.items()):
+        with cols[i]:
+            if st.button(name, key=f"sys_folder_{i}", help=f"Usar: {path}"):
+                st.session_state.selected_output_folder = path
+                st.session_state.folder_validation_status = None
+                st.rerun()
+
+    # Pastas recentes
+    recent_folders = load_recent_folders()
+    if recent_folders:
+        st.markdown("**🕒 Pastas Recentes:**")
+
+        # Cria colunas para as pastas recentes
+        num_cols = min(3, len(recent_folders))
+        cols = st.columns(num_cols)
+
+        for i, folder in enumerate(recent_folders[:num_cols]):
+            with cols[i % num_cols]:
+                folder_name = Path(folder).name or "Raiz"
+                if st.button(f"📁 {folder_name}", key=f"recent_{i}", help=folder):
+                    st.session_state.selected_output_folder = folder
+                    st.session_state.folder_validation_status = None
+                    st.rerun()
+
+    # Pastas com dados disponíveis
+    available_folders = shared_config.find_available_data_folders()
+    if available_folders and len(available_folders) > 1:
+        st.markdown("**📊 Pastas com Dados Disponíveis:**")
+        cols = st.columns(min(3, len(available_folders)))
+
+        for i, folder in enumerate(available_folders[:3]):
+            with cols[i]:
+                folder_name = Path(folder).name or folder
+                if st.button(f"📊 {folder_name}", key=f"data_folder_{i}", help=f"Pasta com dados: {folder}"):
+                    st.session_state.selected_output_folder = folder
+                    st.session_state.folder_validation_status = None
+                    st.rerun()
+
+    # Navegador de diretórios (expandível)
+    with st.expander("🗂️ Navegador de Diretórios", expanded=False):
+        render_directory_browser()
+
+    return st.session_state.selected_output_folder
+
+
+def render_directory_browser():
+    """Renderiza um navegador de diretórios simples"""
+    if 'browser_current_path' not in st.session_state:
+        st.session_state.browser_current_path = str(Path.home())
+
+    current_path = Path(st.session_state.browser_current_path)
+
+    # Navegação para pasta pai
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("⬆️ Voltar", disabled=current_path == current_path.parent):
+            st.session_state.browser_current_path = str(current_path.parent)
+            st.rerun()
+
+    with col2:
+        st.text(f"📍 {current_path}")
+
+    # Lista diretórios
+    try:
+        directories = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('.')]
+        directories.sort(key=lambda x: x.name.lower())
+
+        if directories:
+            # Mostra até 10 diretórios por vez
+            for directory in directories[:10]:
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.text(f"📁 {directory.name}")
+                with col2:
+                    if st.button("Entrar", key=f"enter_{directory.name}"):
+                        st.session_state.browser_current_path = str(directory)
+                        st.rerun()
+                    if st.button("Usar", key=f"use_{directory.name}"):
+                        st.session_state.selected_output_folder = str(directory)
+                        st.session_state.folder_validation_status = None
+                        st.rerun()
+        else:
+            st.info("Nenhuma pasta encontrada neste diretório")
+
+    except PermissionError:
+        st.error("❌ Sem permissão para acessar este diretório")
+    except Exception as e:
+        st.error(f"❌ Erro ao listar diretórios: {str(e)}")
+
 
 # --- Inicialização do Estado da Sessão ---
 for key, default_value in {
@@ -62,31 +321,71 @@ def collection_worker(q, account, folder, limit, output_dir, reset_out, date_par
         q.put(("finished", True))
 
 
-# --- Interface Gráfica (UI) ---
-st.title("🤖 Coletor de Recortes Jurídicos")
-st.markdown("Interface para iniciar, parametrizar e monitorar a coleta de e-mails do Outlook.")
+# --- Interface Gráfica Principal ---
+st.title("🤖 Coletor de Recortes Jurídicos (Sincronizado)")
+st.markdown("Interface profissional com sincronização automática entre coletor e analisador.")
 
 with st.sidebar:
     st.header("Navegação")
     st.markdown("🔬 [Analisador de Destaques](teste_destaque)")
     st.divider()
-    st.header("1. Parâmetros")
-    account_name = st.text_input("📧 Conta", value="SJUR Coleta Serdon")  # VALOR ORIGINAL
-    folder_name = st.text_input("📁 Pasta", value="Caixa de Entrada")  # VALOR ORIGINAL
-    output_folder = st.text_input("💾 Saída", value="outputs")
-    st.header("2. Filtros")
-    filter_type = st.radio("Data", ["Hoje", "Últimos 7 dias", "Período Customizado", "Tudo"],
+
+    st.header("1. Parâmetros Básicos")
+    account_name = st.text_input("📧 Conta", value="SJUR Coleta Serdon")
+    folder_name = st.text_input("📁 Pasta", value="Caixa de Entrada")
+
+    st.header("2. Filtros de Data")
+    filter_type = st.radio("Período", ["Hoje", "Últimos 7 dias", "Período Customizado", "Tudo"],
                            horizontal=True, key="filter_type")
     if filter_type == "Período Customizado":
         c1, c2 = st.columns(2)
         st.session_state.start_date_input = c1.date_input("Início", datetime.now() - timedelta(days=7))
         st.session_state.end_date_input = c2.date_input("Fim", datetime.now())
+
     limit_emails = st.number_input("Limite de e-mails (0=sem limite)", min_value=0, value=10, key="limit_emails")
     reset_out = st.checkbox("Limpar pasta de saída", value=True, key="reset_out")
 
+# --- Seletor de Pasta Sincronizado ---
+output_folder = render_folder_selector()
+
 # --- Botão de Ação ---
-st.header("3. Execução e Monitoramento")
-if st.button("🚀 Iniciar Coleta", type="primary", disabled=st.session_state.is_running):
+st.header("🚀 Execução e Monitoramento")
+
+# Validação antes de permitir execução
+can_execute = True
+execution_issues = []
+
+# Verifica se a pasta de saída é válida
+is_valid, validation_message = validate_folder_path(output_folder)
+if is_valid == False:
+    can_execute = False
+    execution_issues.append(validation_message)
+elif is_valid == "create":
+    st.info(f"💡 {validation_message}")
+
+if execution_issues:
+    for issue in execution_issues:
+        st.error(issue)
+
+if st.button("🚀 Iniciar Coleta", type="primary", disabled=st.session_state.is_running or not can_execute):
+    # Cria pasta se necessário
+    if is_valid == "create":
+        success, create_message = create_folder_if_needed(output_folder)
+        if not success:
+            st.error(create_message)
+            st.stop()
+        else:
+            st.success(create_message)
+
+    # ✅ SINCRONIZAÇÃO: Salva pasta na configuração compartilhada
+    if set_output_folder(output_folder, "coletor"):
+        st.success(f"🔄 Configuração sincronizada: {output_folder}")
+    else:
+        st.warning("⚠️ Erro ao sincronizar configuração, mas coleta continuará")
+
+    # Salva pasta nos recentes
+    save_recent_folder(output_folder)
+
     # Reseta o estado da UI para uma nova execução
     st.session_state.log_messages = []
     st.session_state.debug_messages = []
@@ -139,6 +438,7 @@ if st.session_state.dashboard_data:
     col3.metric("Para Arquivar", data["total_archival_candidate_publications"])
     col4.metric("Processos Únicos", len(data["unique_archival_processes"]))
 
+# --- Logs ---
 log_tab, debug_tab = st.tabs(["Console de Log", "Log de Debug"])
 with log_tab:
     log_container = st.container(height=300)
@@ -186,3 +486,4 @@ if st.session_state.is_running:
     except queue.Empty:
         time.sleep(0.5)
         st.rerun()
+
