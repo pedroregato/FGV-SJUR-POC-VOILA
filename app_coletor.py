@@ -1,23 +1,38 @@
-# app_coletor_sincronizado.py - VERSÃO COM SINCRONIZAÇÃO ENTRE APLICAÇÕES
+# app_coletor_sincronizado.py - VERSÃO FINAL CORRIGIDA
 
+# 1. STREAMLIT PRIMEIRO - SEM EXCEÇÕES
 import streamlit as st
+
+# 2. set_page_config() PRIMEIRO COMANDO - APENAS UMA VEZ!
+st.set_page_config(
+    page_title="Coletor de SERDON Recortes SJUR",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# 3. DEMAIS IMPORTS APÓS O set_page_config()
 from pathlib import Path
-import sys, time, threading, traceback, queue, pythoncom, os
+import sys
+import time
+import threading
+import traceback
+import queue
+import pythoncom
+import os
 from datetime import datetime, timedelta
 import json
 
-# Importa módulo de configuração compartilhada
+# 4. IMPORTS PERSONALIZADOS
 try:
     from shared.shared_config import shared_config, get_output_folder, set_output_folder, get_data_paths
 except ImportError:
     st.error("**Erro:** Módulo `shared_config.py` não encontrado. Certifique-se de que está no mesmo diretório.")
     st.stop()
 
-st.set_page_config(page_title="Coletor de Recortes SJUR", layout="wide")
-
 try:
     project_root = Path(__file__).resolve().parent
-    if project_root.name == 'pages': project_root = project_root.parent
+    if project_root.name == 'pages':
+        project_root = project_root.parent
     sys.path.insert(0, str(project_root))
     from scripts.coletar_emails_para_outputs import run_collection_with_ui_feedback, reset_outputs, ensure_outputs
 except ImportError as e:
@@ -29,6 +44,16 @@ RECENT_FOLDERS_FILE = "recent_folders.json"
 DEFAULT_OUTPUT_FOLDER = "outputs"
 MAX_RECENT_FOLDERS = 5
 
+# Prevenir timeout
+def prevent_streamlit_timeout():
+    """Mantém a conexão ativa durante processos longos"""
+    placeholder = st.empty()
+    start_time = time.time()
+
+    while st.session_state.is_running:
+        elapsed = time.time() - start_time
+        placeholder.info(f"🔄 Processando... {elapsed:.0f}s decorridos")
+        time.sleep(5)  # Atualiza a cada 5 segundos
 
 # --- Funções Auxiliares para Gerenciamento de Pastas ---
 @st.cache_data
@@ -44,7 +69,6 @@ def get_system_folders():
     }
     return {k: v for k, v in folders.items() if Path(v).exists()}
 
-
 def load_recent_folders():
     """Carrega pastas recentemente usadas"""
     try:
@@ -56,7 +80,6 @@ def load_recent_folders():
     except Exception:
         pass
     return []
-
 
 def save_recent_folder(folder_path):
     """Salva pasta na lista de recentes"""
@@ -76,7 +99,6 @@ def save_recent_folder(folder_path):
             json.dump(recent, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
-
 
 def validate_folder_path(path_str):
     """Valida e normaliza caminho da pasta"""
@@ -100,7 +122,6 @@ def validate_folder_path(path_str):
     except Exception as e:
         return False, f"❌ Caminho inválido: {str(e)}"
 
-
 def create_folder_if_needed(path_str):
     """Cria pasta se necessário"""
     try:
@@ -111,7 +132,6 @@ def create_folder_if_needed(path_str):
         return True, f"✅ Pasta já existe: {path}"
     except Exception as e:
         return False, f"❌ Erro ao criar pasta: {str(e)}"
-
 
 # --- Interface de Seleção de Pasta Sincronizada ---
 def render_folder_selector():
@@ -229,7 +249,6 @@ def render_folder_selector():
 
     return st.session_state.selected_output_folder
 
-
 def render_directory_browser():
     """Renderiza um navegador de diretórios simples"""
     if 'browser_current_path' not in st.session_state:
@@ -274,7 +293,6 @@ def render_directory_browser():
     except Exception as e:
         st.error(f"❌ Erro ao listar diretórios: {str(e)}")
 
-
 # --- Inicialização do Estado da Sessão ---
 for key, default_value in {
     'is_running': False, 'progress': 0, 'log_messages': [], 'debug_messages': [],
@@ -284,42 +302,99 @@ for key, default_value in {
     if key not in st.session_state:
         st.session_state[key] = default_value
 
-
 # --- Função da Thread de Coleta ---
 def collection_worker(q, account, folder, limit, output_dir, reset_out, date_params):
+    """
+    Worker thread com checkpoints para processos extremamente longos.
+    """
     pythoncom.CoInitialize()
+    last_keepalive = time.time()
+    keepalive_interval = 20
+    checkpoint_interval = 10  # E-mails entre checkpoints
+
     try:
+        q.put(("status", "🔄 Iniciando coleta..."))
+        q.put(("log", "INFO: Iniciando processo de coleta de e-mails"))
+
         if reset_out:
             q.put(("log", "INFO: Limpando diretório de saídas..."))
             reset_outputs(output_dir)
         else:
             ensure_outputs(output_dir)
 
-        # Chama a função atualizada que retorna dashboard_data
+        # Keep-alive automático
+        def send_keepalive_if_needed(context=""):
+            nonlocal last_keepalive
+            current_time = time.time()
+            if current_time - last_keepalive >= keepalive_interval:
+                q.put(("keepalive", f"Processo ativo - {context}"))
+                last_keepalive = current_time
+                return True
+            return False
+
+        # Callbacks personalizados
+        def log_callback_enhanced(msg):
+            send_keepalive_if_needed(f"Log: {msg[:30]}")
+            q.put(("log", msg))
+
+        def progress_callback_enhanced(data):
+            if send_keepalive_if_needed(f"Progresso: {data}"):
+                # Envia estatísticas periódicas
+                if isinstance(data, tuple) and data[0] == "current":
+                    q.put(("checkpoint", {
+                        "processed": data[1],
+                        "timestamp": time.time(),
+                        "message": f"Checkpoint: {data[1]} e-mails processados"
+                    }))
+            q.put(("progress", data))
+
+        def debug_callback_enhanced(info):
+            send_keepalive_if_needed("Debug")
+            q.put(("debug", info))
+
+        # Keep-alive inicial
+        q.put(("keepalive", "Thread de coleta iniciada - Pré-processamento"))
+
+        # Executa a coleta
         dashboard_data = run_collection_with_ui_feedback(
             account_name=account,
             folder_path=folder,
             limit=limit,
             out_base=output_dir,
-            log_callback=lambda msg: q.put(("log", msg)),
-            progress_callback=lambda data: q.put(("progress", data)),
-            debug_callback=lambda info: q.put(("debug", info)),
+            log_callback=log_callback_enhanced,
+            progress_callback=progress_callback_enhanced,
+            debug_callback=debug_callback_enhanced,
             date_params=date_params
         )
 
+        # Processa resultados finais
         if dashboard_data:
             q.put(("dashboard", dashboard_data))
-            q.put(("log", f"INFO: Coleta concluída! {dashboard_data['total_emails']} e-mails processados"))
+            summary_msg = (
+                f"INFO: RESUMO - {dashboard_data['total_emails']} e-mails, "
+                f"{dashboard_data['total_publications']} publicações, "
+                f"{dashboard_data['total_archival_candidate_publications']} para arquivamento"
+            )
+            q.put(("log", summary_msg))
 
         q.put(("status", "✅ Coleta Concluída!"))
-    except Exception as e:
-        q.put(("log", f"ERRO CRÍTICO NA THREAD: {e}"))
-        q.put(("debug", f"❌ Erro detalhado: {traceback.format_exc()}"))
-        q.put(("status", "❌ Erro na Coleta!"))
-    finally:
-        pythoncom.CoUninitialize()
-        q.put(("finished", True))
+        q.put(("log", "INFO: Processo finalizado com sucesso"))
 
+    except Exception as e:
+        error_msg = f"ERRO CRÍTICO: {str(e)}"
+        q.put(("log", error_msg))
+        q.put(("debug", f"Traceback: {traceback.format_exc()}"))
+        q.put(("status", "❌ Falha na Coleta"))
+        q.put(("error", error_msg))
+
+    finally:
+        try:
+            pythoncom.CoUninitialize()
+        except:
+            pass
+
+        q.put(("finished", True))
+        q.put(("keepalive", "Processo finalizado"))  # Keep-alive final
 
 # --- Interface Gráfica Principal ---
 st.title("🤖 Coletor de Recortes Jurídicos (Sincronizado)")
@@ -486,4 +561,3 @@ if st.session_state.is_running:
     except queue.Empty:
         time.sleep(0.5)
         st.rerun()
-

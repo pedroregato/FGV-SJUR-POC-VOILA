@@ -10,6 +10,8 @@ from datetime import datetime
 import re
 from io import BytesIO
 
+from bs4 import BeautifulSoup
+
 # Importa módulo de configuração compartilhada
 try:
     project_root = Path(__file__).resolve().parent.parent
@@ -47,6 +49,7 @@ if 'current_data_folder' not in st.session_state:
     st.session_state.current_data_folder = get_output_folder()
 
 
+# --- Interface de Configuração de Pasta ---
 # --- Interface de Configuração de Pasta ---
 def render_folder_configuration():
     """Renderiza interface para configuração da pasta de dados"""
@@ -98,25 +101,120 @@ def render_folder_configuration():
             else:
                 st.warning("⚠️ Nenhuma pasta com dados encontrada")
 
+    # NOVO SELETOR INTERATIVO DE PASTA
     with col3:
-        # Seletor manual de pasta
-        available_folders = shared_config.find_available_data_folders()
-        if available_folders:
-            selected_folder = st.selectbox(
-                "Selecionar pasta:",
-                options=available_folders,
-                index=0 if config_info['output_folder'] not in available_folders else available_folders.index(
-                    config_info['output_folder']),
-                key="folder_selector"
-            )
+        st.subheader("🔍 Navegador de Pastas")
 
-            if st.button("✅ Usar Pasta Selecionada"):
-                if set_output_folder(selected_folder, "analisador"):
-                    st.session_state.current_data_folder = selected_folder
-                    st.success(f"✅ Pasta configurada: {selected_folder}")
+        # Opção para digitar o caminho manualmente
+        manual_path = st.text_input(
+            "Digite o caminho completo da pasta:",
+            value=config_info['output_folder'],
+            key="manual_path_input"
+        )
+
+        if st.button("📁 Usar Caminho Digitado", key="use_manual_path"):
+            if os.path.exists(manual_path):
+                if set_output_folder(manual_path, "analisador"):
+                    st.session_state.current_data_folder = manual_path
+                    st.success(f"✅ Pasta configurada: {manual_path}")
                     st.rerun()
                 else:
                     st.error("❌ Erro ao configurar pasta")
+            else:
+                st.error("❌ Caminho não existe!")
+
+        # Opção para navegar a partir de um diretório raiz
+        st.write("---")
+        st.write("**Navegar a partir de:**")
+
+        # Diretórios raiz comuns no Windows
+        root_dirs = [
+            "C:\\",
+            "D:\\",
+            "E:\\",
+            "\\\\FLSB01VPR0002\\user\\",
+            "\\\\FLSB01VPR0002\\user\\pedro.soares\\",
+            config_info['output_folder']
+        ]
+
+        selected_root = st.selectbox(
+            "Diretório raiz:",
+            options=root_dirs,
+            index=root_dirs.index(config_info['output_folder']) if config_info['output_folder'] in root_dirs else 0,
+            key="root_selector"
+        )
+
+        # Navegação em árvore de diretórios
+        try:
+            if os.path.exists(selected_root):
+                current_dir = selected_root
+
+                # Mostrar subpastas disponíveis
+                try:
+                    items = os.listdir(current_dir)
+                    folders = [item for item in items if os.path.isdir(os.path.join(current_dir, item))]
+
+                    if folders:
+                        selected_folder = st.selectbox(
+                            "Subpastas disponíveis:",
+                            options=folders,
+                            key="folder_browser"
+                        )
+
+                        selected_path = os.path.join(current_dir, selected_folder)
+
+                        if st.button("📂 Selecionar Esta Pasta", key="select_browsed_folder"):
+                            if set_output_folder(selected_path, "analisador"):
+                                st.session_state.current_data_folder = selected_path
+                                st.success(f"✅ Pasta configurada: {selected_path}")
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao configurar pasta")
+                    else:
+                        st.info("ℹ️ Nenhuma subpasta encontrada neste diretório")
+
+                except PermissionError:
+                    st.warning("⚠️ Permissão negada para acessar este diretório")
+                except Exception as e:
+                    st.error(f"❌ Erro ao listar diretório: {e}")
+
+            else:
+                st.warning("⚠️ Diretório raiz não existe")
+
+        except Exception as e:
+            st.error(f"❌ Erro ao acessar diretório: {e}")
+
+    # Verificação detalhada dos arquivos (DEBUG)
+    st.write("---")
+    with st.expander("🔍 Verificação Detalhada dos Arquivos (DEBUG)"):
+        current_folder = get_output_folder()
+        json_path = os.path.join(current_folder, "json")
+
+        st.write(f"**Pasta atual:** `{current_folder}`")
+        st.write(f"**Pasta JSON:** `{json_path}`")
+
+        if os.path.exists(json_path):
+            st.success("✅ Pasta JSON existe")
+            try:
+                files = os.listdir(json_path)
+                st.write(f"**Arquivos encontrados:** {len(files)}")
+
+                for file in files:
+                    file_path = os.path.join(json_path, file)
+                    file_size = os.path.getsize(file_path) if os.path.isfile(file_path) else 0
+                    st.write(f"- `{file}` ({file_size} bytes)")
+
+            except Exception as e:
+                st.error(f"❌ Erro ao listar arquivos: {e}")
+        else:
+            st.error("❌ Pasta JSON não existe!")
+
+        # Verificar se os arquivos específicos existem
+        data_paths = get_data_paths()
+        for file_type, path in data_paths.items():
+            exists = os.path.exists(path)
+            status = "✅" if exists else "❌"
+            st.write(f"{status} `{path}` - {'' if exists else 'NÃO '}Encontrado")
 
 
 # --- Funções Auxiliares Atualizadas ---
@@ -330,12 +428,18 @@ if selected_email_data['total_publications'] > 0:
         st.session_state.filter_positive_scores = filter_positive
 
     with col2:
+        # Substitua TODO o código dentro do bloco do botão "✅ Exportar Apenas com Indícios" por:
+        # Substitua o código do botão "✅ Exportar Apenas com Indícios" por:
+
         if st.button("✅ Exportar Apenas com Indícios", type="primary"):
-            # Função de exportação (mantida igual ao original)
+            from bs4 import BeautifulSoup
+            import streamlit.components.v1 as components  # ✅ correção para o alerta do v1
+            from pandas.io.excel import ExcelWriter  # type: ignore
+
+
             def get_determinant_rules_names_inline(hits_data):
                 if not hits_data:
                     return ""
-
                 rule_names = []
                 for rule_id, hit_details in hits_data.items():
                     if rule_id in sjur_rules.determinant_rules:
@@ -356,15 +460,49 @@ if selected_email_data['total_publications'] > 0:
                     return text
 
 
+            st.write("🔍 Iniciando coleta para Excel...")
+
+            total_publications = sum(
+                1 for email in st.session_state.emails_data
+                for pub in email['publications']
+                if pub.get('score', 0) > 0
+            )
+
+            if total_publications == 0:
+                st.warning("⚠️ Nenhuma publicação com indícios de arquivamento encontrada")
+                st.stop()
+
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
             export_data = []
-            for email in st.session_state.emails_data:
+            html_content_data = []
+            processed_count = 0
+
+            status_text.text("🔍 Coletando dados das publicações...")
+
+            for email_idx, email in enumerate(st.session_state.emails_data):
                 html_filename = find_html_filename(email)
                 html_filename_clean = clean_text(html_filename)
                 email_subject_clean = clean_text(email['subject'])
 
-                for i, pub in enumerate(email['publications']):
+                # Caminho do HTML original salvo na coleta
+                data_paths = get_data_paths()
+                html_filepath = os.path.join(data_paths['html'], html_filename)
+
+                for pub_idx, pub in enumerate(email['publications']):
                     if pub.get('score', 0) > 0:
-                        processos = pub['metadata'].get('cnjs', [])
+                        processed_count += 1
+                        progress_percent = processed_count / total_publications
+                        progress_bar.progress(progress_percent)
+                        status_text.text(
+                            f"📊 Processando {processed_count}/{total_publications} publicações... "
+                            f"({progress_percent * 100:.1f}%) - E-mail {email_idx + 1}, Pub {pub_idx + 1}"
+                        )
+
+                        publication_id = f"{html_filename_clean}_pub_{pub_idx + 1}"
+
+                        processos = list(set(pub['metadata'].get('cnjs', [])))
                         processos_str = "; ".join(processos) if processos else "Nenhum"
 
                         tribunal = clean_text(pub['metadata'].get('tribunal', ''))
@@ -373,11 +511,41 @@ if selected_email_data['total_publications'] > 0:
 
                         regras_determinantes = get_determinant_rules_names_inline(pub.get('hits', {}))
 
+                        # --- Conteudo_HTML com fallback ---
+                        raw_html = pub.get('html_content', '')
+
+                        if not raw_html and os.path.exists(html_filepath):
+                            try:
+                                with open(html_filepath, "r", encoding="utf-8") as f:
+                                    full_html = f.read()
+                                pubs_fallback = BeautifulSoup(full_html, "lxml").find_all("table")
+                                if pub_idx < len(pubs_fallback):
+                                    raw_html = str(pubs_fallback[pub_idx])
+                                else:
+                                    raw_html = full_html
+                            except Exception as e:
+                                raw_html = f"[Erro ao carregar HTML: {e}]"
+
+                        simplified_text = ""
+                        if raw_html:
+                            try:
+                                simplified_text = BeautifulSoup(raw_html, "lxml").get_text("\n", strip=True)[
+                                                  :500] + "..."
+                            except Exception as e:
+                                simplified_text = f"[Erro ao simplificar: {e}]"
+
+                        html_content_data.append({
+                            'ID_Publicacao': publication_id,
+                            'Conteudo_HTML_Completo': raw_html,
+                            'Texto_Simplificado': simplified_text
+                        })
+
                         export_data.append({
+                            'ID_Publicacao': publication_id,
                             'Arquivo_HTML': html_filename_clean,
                             'Email_Assunto': email_subject_clean,
                             'Email_Data': email['received'],
-                            'Publicacao_Index': i + 1,
+                            'Publicacao_Index': pub_idx + 1,
                             'Score_Total': pub['score'],
                             'Nivel': clean_text(pub['level']),
                             'Processos_Encontrados': processos_str,
@@ -390,22 +558,61 @@ if selected_email_data['total_publications'] > 0:
                             'Total_Regras': len(pub.get('hits', {}))
                         })
 
-            if export_data:
-                df = pd.DataFrame(export_data)
+            status_text.text("💾 Criando arquivo Excel...")
+            progress_bar.progress(0.9)
+
+            try:
+                df_principal = pd.DataFrame(export_data)
+                df_conteudo = pd.DataFrame(html_content_data)
+
                 excel_buffer = BytesIO()
-                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    df.to_excel(writer, index=False, sheet_name='Publicações com Indícios')
+                with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:  # type: ignore[arg-type]
+                    df_principal.to_excel(writer, index=False, sheet_name='Metadados')
+                    df_conteudo.to_excel(writer, index=False, sheet_name='Conteudo_HTML')
+
+                    wb = writer.book
+                    ws_metadados = wb['Metadados']
+                    ws_conteudo = wb['Conteudo_HTML']
+
+                    conteudo_map = {
+                        ws_conteudo[f'A{r}'].value: r
+                        for r in range(2, len(html_content_data) + 2)
+                    }
+
+                    ws_metadados['O1'] = 'Ver_Conteudo'
+                    for row in range(2, len(export_data) + 2):
+                        pub_id = ws_metadados[f'A{row}'].value
+                        conteudo_row = conteudo_map.get(pub_id)
+                        if conteudo_row:
+                            ws_metadados[f'O{row}'] = f'=HYPERLINK("#Conteudo_HTML!A{conteudo_row}", "🔗 Ver")'
+                        else:
+                            ws_metadados[f'O{row}'] = "N/A"
+
+                progress_bar.progress(1.0)
+                status_text.text("✅ Exportação concluída! Pronto para download.")
 
                 excel_data = excel_buffer.getvalue()
                 st.download_button(
-                    label="⬇️ Baixar Excel com Indícios",
+                    label="⬇️ Baixar Excel com Indícios (2 abas)",
                     data=excel_data,
                     file_name=f"publicacoes_com_indicios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
+
                 st.success(f"✅ Exportadas {len(export_data)} publicações com indícios de arquivamento")
-            else:
-                st.warning("⚠️ Nenhuma publicação com indícios de arquivamento encontrada")
+                st.info("📋 Planilha contém 2 abas: 'Metadados' com links para 'Conteudo_HTML'")
+
+            except Exception as e:
+                progress_bar.empty()
+                status_text.text("❌ Erro durante a exportação!")
+                st.error(f"Erro ao criar Excel: {e}")
+
+            finally:
+                import time
+
+                time.sleep(5)
+                progress_bar.empty()
+                status_text.empty()
 
     # Filtra as publicações conforme o filtro
     publications_to_show = filter_publications_by_score(

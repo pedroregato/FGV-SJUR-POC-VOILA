@@ -353,12 +353,6 @@ class DatajudConsultaEnriquecida:
     def consultar_processo_enriquecido(self, numero: str) -> Dict:
         """
         Consulta um processo com extração enriquecida de todos os dados
-
-        Args:
-            numero: Número do processo
-
-        Returns:
-            Dict: Dados enriquecidos do processo
         """
         try:
             if not self.api_key:
@@ -395,8 +389,40 @@ class DatajudConsultaEnriquecida:
             metadados_es = self.extrair_metadados_elasticsearch(data)
 
             if data.get('hits', {}).get('total', {}).get('value', 0) > 0:
-                hit = data['hits']['hits'][0]
-                detalhes_processo = self.extrair_detalhes_processo(hit)
+                hits = data['hits']['hits']
+
+                # Processar TODOS os hits e consolidar informações
+                processos_por_grau = {}
+                todas_movimentacoes = []
+                orgaos_julgadores = []
+
+                for hit in hits:
+                    source = hit.get('_source', {})
+                    grau = source.get('grau', '')
+
+                    # Consolidar movimentações de todos os graus
+                    movimentos = source.get('movimentos', [])
+                    todas_movimentacoes.extend(movimentos)
+
+                    # Coletar órgãos julgadores
+                    orgao = source.get('orgaoJulgador', {})
+                    if orgao:
+                        orgaos_julgadores.append(orgao)
+
+                    # Manter informações do primeiro hit como base (ou escolher um específico)
+                    if not processos_por_grau:
+                        processo_base = self.extrair_detalhes_processo(hit)
+
+                # Substituir as movimentações do processo base pelas consolidadas
+                if todas_movimentacoes:
+                    processo_base['movimentacoes'] = self._analisar_movimentacoes_enriquecidas(todas_movimentacoes)
+
+                # Adicionar informações sobre múltiplos graus
+                processo_base['multiplos_graus'] = {
+                    'total_encontrado': len(hits),
+                    'graus': [hit['_source'].get('grau', '') for hit in hits],
+                    'orgaos_julgadores': [self._enriquecer_orgao_julgador(orgao) for orgao in orgaos_julgadores]
+                }
 
                 return {
                     "sucesso": True,
@@ -406,8 +432,8 @@ class DatajudConsultaEnriquecida:
                         "timestamp_consulta": datetime.now().isoformat(),
                         "elasticsearch": metadados_es
                     },
-                    "processo": detalhes_processo,
-                    "dados_brutos": hit['_source']  # Manter compatibilidade
+                    "processo": processo_base,
+                    "dados_brutos": [hit['_source'] for hit in hits]  # Todos os dados brutos
                 }
             else:
                 return {
@@ -499,6 +525,18 @@ class DatajudConsultaEnriquecida:
         if orgao['municipio']['codigo_ibge']:
             print(f"   Código IBGE: {orgao['municipio']['codigo_ibge']}")
 
+        # NOVA SEÇÃO: Múltiplos Graus
+        if 'multiplos_graus' in processo:
+            multiplos = processo['multiplos_graus']
+            print(f"\n🎯 MÚLTIPLOS GRAUS ENCONTRADOS:")
+            print(f"   Total de instâncias: {multiplos['total_encontrado']}")
+            print(f"   Graus: {', '.join(multiplos['graus'])}")
+
+            if len(multiplos['orgaos_julgadores']) > 1:
+                print(f"   Órgãos julgadores envolvidos:")
+                for i, orgao_info in enumerate(multiplos['orgaos_julgadores'], 1):
+                    print(f"     {i}. {orgao_info['nome']} (Grau: {multiplos['graus'][i - 1]})")
+
         # Seção 7: Análise de Movimentações
         movs = processo["movimentacoes"]
         print(f"\n🔄 ANÁLISE DE MOVIMENTAÇÕES:")
@@ -555,7 +593,7 @@ def exemplo_uso_enriquecido():
     Exemplo de uso da versão enriquecida
     """
     consulta = DatajudConsultaEnriquecida()
-    numero = "0148600-68.2008.5.15.0121" ##"13.927.801/0029-40" # "08319230620248190021" ## "0010637-74.2015.5.15.0023"   ##
+    numero = "10008971220248260053" # "00076477720164013700" # "00105975520245030106" #  #"50247597020204025101" # "09715058120248190001" # "08319230620248190021" ##"13.927.801/0029-40" # "08319230620248190021" ## "0010637-74.2015.5.15.0023"   ##
 
     print("🔍 Consultando processo com análise enriquecida...")
     resultado = consulta.consultar_processo_enriquecido(numero)
