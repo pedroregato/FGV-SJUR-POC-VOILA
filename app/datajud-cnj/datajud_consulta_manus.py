@@ -397,9 +397,9 @@ class DatajudConsultaEnriquecida:
                 todas_movimentacoes = []
                 orgaos_julgadores = []
 
+                hit_base = hits[0]
                 for hit in hits:
                     source = hit.get('_source', {})
-                    grau = source.get('grau', '')
 
                     # Consolidar movimentações de todos os graus
                     movimentos = source.get('movimentos', [])
@@ -410,9 +410,13 @@ class DatajudConsultaEnriquecida:
                     if orgao:
                         orgaos_julgadores.append(orgao)
 
-                    # Manter informações do primeiro hit como base (ou escolher um específico)
-                    if not processos_por_grau:
-                        processo_base = self.extrair_detalhes_processo(hit)
+                    # Eleger como base o hit com a data de ajuizamento mais antiga
+                    data_atual = hit.get('_source', {}).get('dataAjuizamento') or ''
+                    data_base = hit_base.get('_source', {}).get('dataAjuizamento') or ''
+                    if data_atual and (not data_base or data_atual < data_base):
+                        hit_base = hit
+
+                processo_base = self.extrair_detalhes_processo(hit_base)
 
                 # Substituir as movimentações do processo base pelas consolidadas
                 if todas_movimentacoes:
