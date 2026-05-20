@@ -25,7 +25,7 @@ import datajud_consulta_manus
 # ==============================================================
 # CONFIGURACAO — edite aqui antes de executar
 # ==============================================================
-EXCEL_ENTRADA = Path(r"F:\FGV-SJUR\sjur-poc-voila\data_analysis\GERPRO-Ativos-2026-02-25.xlsx")
+EXCEL_ENTRADA = Path(r"F:\FGV-SJUR\sjur-poc-voila\data_analysis\GERPRO-Ativos-2026-05-15.xlsx")
 COLUNA_PROCESSOS = "B"         # Letra da coluna com os numeros de processo
 LINHA_CABECALHO = 0            # 0 = primeira linha e cabecalho
 PASTA_SAIDA = Path(r"F:\FGV-SJUR\resultado_transito_julgado")
@@ -208,12 +208,19 @@ def verificar_baixa_arquivamento_transito(
                 movs = movs_wrap.get("movimentacoes") or []
                 assuntos = proc["classificacao"].get("assuntos") or []
 
+                multiplos = proc.get("multiplos_graus") or {}
+                graus_lista = multiplos.get("graus") or []
+                total_graus = multiplos.get("total_encontrado", 1)
+
                 info = {
                     "numero_processo":     numero,
                     "encontrado_na_api":   "Sim",
                     "status":              "ok",
                     "tribunal":            proc["identificacao"]["tribunal"],
                     "grau":                proc["identificacao"]["grau"],
+                    "em_multiplos_graus":  "Sim" if total_graus > 1 else "Nao",
+                    "total_graus":         total_graus,
+                    "graus":               ", ".join(str(g) for g in graus_lista),
                     "classe":              proc["classificacao"]["classe"].get("nome", "N/A"),
                     "assunto_principal":   assuntos[0].get("nome", "N/A") if assuntos else "N/A",
                     "data_ajuizamento":    proc["timestamps"]["data_ajuizamento_formatada"],
