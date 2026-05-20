@@ -61,3 +61,57 @@ for hit in hits:
 
 processo_base['movimentacoes'] = analisar_movimentacoes(todas_movimentacoes)
 ```
+
+---
+
+## Colunas de saída da planilha
+
+### Colunas de identificação e metadados
+
+| Coluna | Descrição |
+|---|---|
+| `numero_processo` | Número CNJ do processo (20 dígitos) |
+| `encontrado_na_api` | `Sim`, `Nao` ou `Erro` |
+| `status` | `ok`, `nao_encontrado` ou descrição do erro |
+| `tribunal` | Nome do tribunal retornado pela API |
+| `grau` | Grau de jurisdição do hit base (ex: `G1`, `G2`) |
+| `em_multiplos_graus` | `Sim` se o processo foi encontrado em mais de um grau |
+| `total_graus` | Quantidade de graus encontrados na API |
+| `graus` | Lista dos graus encontrados separados por vírgula (ex: `G1, G2`) |
+| `classe` | Classe processual (ex: Reclamação Trabalhista) |
+| `assunto_principal` | Primeiro assunto listado na classificação |
+| `data_ajuizamento` | Data de ajuizamento do hit mais antigo (ver diretriz acima) |
+| `orgao_julgador` | Nome do órgão julgador do hit base |
+| `municipio` | Município do órgão julgador |
+| `total_movimentacoes` | Total de movimentos consolidados de todos os graus |
+| `ultima_atualizacao` | Data/hora da última atualização do hit base |
+| `movimentos_detectados` | Resumo dos alvos TPU encontrados com datas |
+
+### Colunas por alvo TPU
+
+Para cada código de movimentação monitorado são geradas duas colunas:
+
+| Coluna | Descrição |
+|---|---|
+| `tem_transito_em_julgado` | `Sim` / `Nao` / `N/A` / `Erro` |
+| `data_transito_em_julgado` | Data da ocorrência mais antiga (formato `DD/MM/YYYY HH:MM`) |
+| `tem_baixa_definitiva` | `Sim` / `Nao` / `N/A` / `Erro` |
+| `data_baixa_definitiva` | Data da ocorrência mais antiga |
+| `tem_arquivamento_definitivo` | `Sim` / `Nao` / `N/A` / `Erro` |
+| `data_arquivamento_definitivo` | Data da ocorrência mais antiga |
+| `tem_arquivamento_sumarissimo` | `Sim` / `Nao` / `N/A` / `Erro` |
+| `data_arquivamento_sumarissimo` | Data da ocorrência mais antiga |
+| `tem_ausencia_reclamante` | `Sim` / `Nao` / `N/A` / `Erro` |
+| `data_ausencia_reclamante` | Data da ocorrência mais antiga |
+
+> **Nota sobre datas de movimentação:** a data retornada é sempre a ocorrência
+> **mais antiga** do código TPU entre todos os movimentos consolidados de todos
+> os graus, ordenados por `dataHora` ISO antes da seleção.
+
+### Valores especiais
+
+| Valor | Significado |
+|---|---|
+| `Sim` / `Nao` | Processo encontrado na API |
+| `N/A` | Processo não encontrado na API (sem dados para avaliar) |
+| `Erro` | Falha na consulta após todas as tentativas de retry |
