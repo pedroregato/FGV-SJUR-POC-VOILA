@@ -36,11 +36,12 @@ SALVAR_CHECKPOINT: bool = True # Retomar de onde parou em caso de interrupcao
 
 # Codigos TPU/CNJ monitorados: codigo -> (nome_legivel, sufixo_coluna)
 ALVOS_TPU: dict = {
-    848: ("Transito em Julgado",              "transito_em_julgado"),
-    22:  ("Baixa Definitiva",                 "baixa_definitiva"),
-    246: ("Arquivamento Definitivo",          "arquivamento_definitivo"),
-    472: ("Arquivamento sumarissimo CLT",     "arquivamento_sumarissimo"),
-    473: ("Arquivamento ausencia reclamante", "ausencia_reclamante"),
+    848:   ("Transito em Julgado",              "transito_em_julgado"),
+    22:    ("Baixa Definitiva",                 "baixa_definitiva"),
+    246:   ("Arquivamento Definitivo",          "arquivamento_definitivo"),
+    10456: ("Arquivamento Definitivo (10456)",  "arquivamento_definitivo_10456"),
+    472:   ("Arquivamento sumarissimo CLT",     "arquivamento_sumarissimo"),
+    473:   ("Arquivamento ausencia reclamante", "ausencia_reclamante"),
 }
 
 logging.basicConfig(
